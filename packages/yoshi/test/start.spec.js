@@ -569,8 +569,8 @@ describe('Aggregator: Start', () => {
       this.timeout(30000);
 
       describe('when using typescript', () => {
-        // currently is not passing in the CI, needs debugging
-        it.skip(`should rebuild and restart server after a file has been changed with typescript files`, () => {
+        // eslint-disable-next-line
+        it.only(`should rebuild and restart server after a file has been changed with typescript files`, () => {
           child = test
             .setup({
               'tsconfig.json': fx.tsconfig(),
@@ -583,6 +583,7 @@ describe('Aggregator: Start', () => {
               'package.json': fx.packageJson(),
               'pom.xml': fx.pom(),
             })
+            .verbose()
             .spawn('start');
 
           return checkServerIsServing({ max: 100 })
@@ -600,8 +601,8 @@ describe('Aggregator: Start', () => {
       });
 
       describe('when using es6', () => {
-        // currently is not passing in the CI, needs debugging
-        it.skip(`should rebuild and restart server after a file has been changed`, () => {
+        // eslint-disable-next-line
+        it.only(`should rebuild and restart server after a file has been changed`, () => {
           child = test
             .setup({
               'src/server.js': fx.httpServer('hello'),
@@ -612,6 +613,7 @@ describe('Aggregator: Start', () => {
               'pom.xml': fx.pom(),
               '.babelrc': '{}',
             })
+            .verbose()
             .spawn('start');
 
           return checkServerIsServing()
@@ -622,8 +624,8 @@ describe('Aggregator: Start', () => {
       });
 
       describe('when using no transpile', () => {
-        // currently is not passing in the CI, needs debugging
-        it.skip(`should restart server after a file has been changed`, () => {
+        // eslint-disable-next-line
+        it.only(`should restart server after a file has been changed`, () => {
           child = test
             .setup({
               'src/server.js': fx.httpServer('hello'),
@@ -633,6 +635,7 @@ describe('Aggregator: Start', () => {
               'package.json': fx.packageJson(),
               'pom.xml': fx.pom(),
             })
+            .verbose()
             .spawn('start');
 
           return checkServerIsServing()
