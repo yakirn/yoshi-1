@@ -7,6 +7,7 @@ const retryPromise = require('retry-promise').default;
 const { outsideTeamCity } = require('./helpers/env-variables');
 const https = require('https');
 const { takePort } = require('./helpers/http-helpers');
+const detect = require('detect-port');
 
 describe('Aggregator: Start', () => {
   let test, child;
@@ -695,6 +696,40 @@ describe('Aggregator: Start', () => {
       });
     });
 
+    it('should print application ready message only after the server port is avaialble', async () => {
+      const port = await detect(3005);
+
+      // Intentionally start listening after a timeout, to check that we indeed wait for the port
+      child = test
+        .setup({
+          'index.js': `
+          'use strict';
+
+          const http = require('http');
+
+          const hostname = 'localhost';
+          const port = ${port};
+          const server = http.createServer((req, res) => {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/plain');
+            res.end('hello');
+          });
+
+          setTimeout(() => {
+            server.listen(port, hostname, () => {
+              console.log('Running a server...');
+            });
+          }, 1000);
+        `,
+          'package.json': fx.packageJson(),
+        })
+        .verbose()
+        .spawn('start', [], { PORT: port });
+
+      await checkStdout('Application is now available', 100, 30);
+      await fetch(`http://localhost:${port}`);
+    });
+
     it('should use yoshi-update-node-version', () => {
       child = test
         .setup({
@@ -794,9 +829,9 @@ describe('Aggregator: Start', () => {
     );
   }
 
-  function checkStdout(str) {
+  function checkStdout(str, backoff = 100, max = 10) {
     return retryPromise(
-      { backoff: 100 },
+      { backoff, max },
       () =>
         test.stdout.indexOf(str) > -1 ? Promise.resolve() : Promise.reject(),
     );
