@@ -670,6 +670,20 @@ describe('Aggregator: Start', () => {
               'index.js': `
                 console.log('onInit');
                 setInterval(() => {}, 1000);
+                const http = require('http');
+
+                const hostname = 'localhost';
+                const port = process.env.PORT;
+                const server = http.createServer((req, res) => {
+                  res.statusCode = 200;
+                  res.setHeader('Content-Type', 'text/plain');
+                  res.end('hello');
+                });
+
+                server.listen(port, hostname, () => {
+                  console.log('Running a server...');
+                });
+
                 process.on('SIGHUP', () => console.log('onRestart'));
               `,
               'package.json': fx.packageJson(),
