@@ -722,7 +722,7 @@ describe('Aggregator: Start', () => {
           const http = require('http');
 
           const hostname = 'localhost';
-          const port = ${port};
+          const port = process.env.PORT;
           const server = http.createServer((req, res) => {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'text/plain');
@@ -737,10 +737,12 @@ describe('Aggregator: Start', () => {
         `,
           'package.json': fx.packageJson(),
         })
-        .verbose()
         .spawn('start', [], { PORT: port });
 
-      await checkStdout('Application is now available', 100, 30);
+      await checkStdout('Application is now available', {
+        backoff: 100,
+        max: 30,
+      });
       await fetch(`http://localhost:${port}`);
     });
 
@@ -843,7 +845,7 @@ describe('Aggregator: Start', () => {
     );
   }
 
-  function checkStdout(str, backoff = 100, max = 10) {
+  function checkStdout(str, { backoff = 100, max = 10 }) {
     return retryPromise(
       { backoff, max },
       () =>
