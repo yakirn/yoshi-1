@@ -401,6 +401,7 @@ const serverConfig = {
   entry: {
     server: [
       // require.resolve('@babel/polyfill'),
+      'webpack/hot/poll?1000',
       './src/server.js',
     ],
   },
@@ -471,10 +472,14 @@ const serverConfig = {
   },
 
   externals: [
-    './chunk-manifest.json',
-    './asset-manifest.json',
+    // './chunk-manifest.json',
+    // './asset-manifest.json',
     nodeExternals({
-      whitelist: [reStyle, reImage],
+      whitelist: [
+        // reStyle,
+        // reImage
+        'webpack/hot/poll?1000',
+      ],
     }),
   ],
 
