@@ -7,6 +7,16 @@
     "name": "{%authorName%}",
     "email": "{%authorEmail%}"
   },
+  "engines": {
+    "node": ">=6.13.1",
+    "npm": ">=3.10.10"
+  },
+  "browserslist": [
+    ">1%",
+    "last 4 versions",
+    "Firefox ESR",
+    "not ie < 9"
+  ],
   "scripts": {
     "start": "yoshi start",
     "precommit": "lint-staged",

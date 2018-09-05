@@ -12,273 +12,116 @@ if (cliArgs.production) {
   process.env.NODE_ENV = 'production';
 }
 
-const { createRunner } = require('haste-core');
 const path = require('path');
-const crossSpawn = require('cross-spawn');
-const LoggerPlugin = require('../plugins/haste-plugin-yoshi-logger');
-const {
-  clientFilesPath,
-  servers,
-  entry,
-  defaultEntry,
-  hmr,
-  liveReload,
-  petriSpecsConfig,
-  clientProjectName,
-} = require('yoshi-config');
-const globs = require('yoshi-config/globs');
-const {
-  isTypescriptProject,
-  isBabelProject,
-  shouldRunLess,
-  shouldRunSass,
-  shouldTransformHMRRuntime,
-  suffix,
-  watch,
-  isProduction,
-} = require('yoshi-helpers');
-const { debounce } = require('lodash');
+// const execa = require('execa');
+const child_process = require('child_process');
+const express = require('express');
+const webpack = require('webpack');
+const webpackDevMiddleware = require('webpack-dev-middleware');
+// const webpackHotMiddleware = require('webpack-hot-middleware');
+const errorOverlayMiddleware = require('react-dev-utils/errorOverlayMiddleware');
+const webpackConfig = require('./webpack.config');
 
-const runner = createRunner({
-  logger: new LoggerPlugin(),
-});
+function format(time) {
+  return time.toTimeString().replace(/.*(\d{2}:\d{2}:\d{2}).*/, '$1');
+}
 
-const addJsSuffix = suffix('.js');
-const shouldRunTests = cliArgs.test !== false;
-const debugPort = cliArgs.debug;
-const debugBrkPort = cliArgs['debug-brk'];
-const entryPoint = addJsSuffix(cliArgs['entry-point'] || 'index.js');
+function createCompilationPromise(name, compiler, config) {
+  return new Promise((resolve, reject) => {
+    let timeStart = new Date();
+    compiler.hooks.compile.tap(name, () => {
+      timeStart = new Date();
+      console.info(`[${format(timeStart)}] Compiling '${name}'...`);
+    });
 
-module.exports = runner.command(
-  async tasks => {
-    const { sass, less, copy, clean, babel, typescript } = tasks;
-
-    const wixAppServer = tasks[require.resolve('../tasks/app-server')];
-    const wixCdn = tasks[require.resolve('../tasks/cdn')];
-    const migrateScopePackages =
-      tasks[require.resolve('../tasks/migrate-to-scoped-packages')];
-    const wixUpdateNodeVersion =
-      tasks[require.resolve('../tasks/update-node-version')];
-    const wixPetriSpecs = tasks[require.resolve('../tasks/petri-specs')];
-    const wixMavenStatics = tasks[require.resolve('../tasks/maven-statics')];
-
-    const appServer = async () => {
-      if (cliArgs.server === false) {
-        return;
+    compiler.hooks.done.tap(name, stats => {
+      console.info(stats.toString(config.stats));
+      const timeEnd = new Date();
+      const time = timeEnd.getTime() - timeStart.getTime();
+      if (stats.hasErrors()) {
+        console.info(
+          `[${format(timeEnd)}] Failed to compile '${name}' after ${time} ms`,
+        );
+        reject(new Error('Compilation failed!'));
+      } else {
+        console.info(
+          `[${format(
+            timeEnd,
+          )}] Finished '${name}' compilation after ${time} ms`,
+        );
+        resolve(stats);
       }
+    });
+  });
+}
 
-      return wixAppServer(
-        {
-          entryPoint,
-          debugPort,
-          debugBrkPort,
-          manualRestart: cliArgs['manual-restart'],
-        },
-        { title: 'app-server' },
-      );
-    };
+module.exports = async () => {
+  const clientConfig = webpackConfig.find(config => config.name === 'client');
 
-    await Promise.all([
-      clean({ pattern: `{dist,target}/*` }),
-      wixUpdateNodeVersion({}, { title: 'update-node-version', log: false }),
-      migrateScopePackages(
-        {},
-        { title: 'scope-packages-migration', log: false },
-      ),
-    ]);
+  const serverConfig = webpackConfig.find(config => config.name === 'server');
 
-    const ssl = cliArgs.ssl || servers.cdn.ssl;
+  serverConfig.output.hotUpdateMainFilename = 'updates/[hash].hot-update.json';
+  serverConfig.output.hotUpdateChunkFilename =
+    'updates/[id].[hash].hot-update.js';
+  serverConfig.module.rules = serverConfig.module.rules.filter(
+    x => x.loader !== 'null-loader',
+  );
+  serverConfig.plugins.push(new webpack.HotModuleReplacementPlugin());
 
-    await Promise.all([
-      transpileJavascriptAndRunServer(),
-      ...transpileCss(),
-      copy(
-        {
-          pattern: [
-            `${globs.base}/assets/**/*`,
-            `${globs.base}/**/*.{ejs,html,vm}`,
-            `${globs.base}/**/*.{css,json,d.ts}`,
-          ],
-          target: 'dist',
-        },
-        { title: 'copy-server-assets', log: false },
-      ),
-      copy(
-        {
-          pattern: [
-            `${globs.assetsLegacyBase}/assets/**/*`,
-            `${globs.assetsLegacyBase}/**/*.{ejs,html,vm}`,
-          ],
-          target: 'dist/statics',
-        },
-        { title: 'copy-static-assets-legacy', log: false },
-      ),
-      copy(
-        {
-          pattern: [`assets/**/*`, `**/*.{ejs,html,vm}`],
-          source: globs.assetsBase,
-          target: 'dist/statics',
-        },
-        { title: 'copy-static-assets', log: false },
-      ),
-      wixCdn(
-        {
-          port: servers.cdn.port,
-          host: '0.0.0.0',
-          ssl,
-          publicPath: servers.cdn.url(ssl),
-          statics: clientFilesPath,
-          webpackConfigPath: require.resolve(
-            '../../config/webpack.config.client',
-          ),
-          configuredEntry: entry,
-          defaultEntry: defaultEntry,
-          hmr,
-          liveReload,
-          transformHMRRuntime: shouldTransformHMRRuntime(),
-        },
-        { title: 'cdn' },
-      ),
-      wixPetriSpecs(
-        { config: petriSpecsConfig },
-        { title: 'petri-specs', log: false },
-      ),
-      wixMavenStatics(
-        {
-          clientProjectName,
-          staticsDir: clientFilesPath,
-        },
-        { title: 'maven-statics', log: false },
-      ),
-    ]);
+  const multiCompiler = webpack(webpackConfig);
 
-    if (shouldRunTests && !isProduction()) {
-      crossSpawn('npm', ['test', '--silent'], {
-        stdio: 'inherit',
-        env: {
-          ...process.env,
-          WIX_NODE_BUILD_WATCH_MODE: 'true',
-        },
-      });
+  const clientCompiler = multiCompiler.compilers.find(
+    compiler => compiler.name === 'client',
+  );
+
+  const serverCompiler = multiCompiler.compilers.find(
+    compiler => compiler.name === 'server',
+  );
+
+  const clientPromise = createCompilationPromise(
+    'client',
+    clientCompiler,
+    clientConfig,
+  );
+
+  const serverPromise = createCompilationPromise(
+    'server',
+    serverCompiler,
+    serverConfig,
+  );
+
+  const server = express();
+
+  server.use(errorOverlayMiddleware());
+  server.use(express.static(path.resolve(__dirname, '../public')));
+
+  server.use(
+    webpackDevMiddleware(clientCompiler, {
+      publicPath: clientConfig.output.publicPath,
+      logLevel: 'silent',
+      watchOptions: {},
+    }),
+  );
+
+  let serverProcess;
+
+  serverCompiler.watch({}, (error, stats) => {
+    if (serverProcess) {
+      return;
+      // serverProcess.kill('SIGHUP');
     }
 
-    watch(
-      {
-        pattern: [
-          `${globs.base}/assets/**/*`,
-          `${globs.base}/**/*.{ejs,html,vm}`,
-          `${globs.base}/**/*.{css,json,d.ts}`,
-        ],
-      },
-      changed => copy({ pattern: changed, target: 'dist' }),
-    );
+    serverProcess = child_process.spawn('node', ['index.js'], {
+      stdio: 'inherit',
+    });
+  });
 
-    watch(
-      {
-        pattern: [
-          `${globs.assetsLegacyBase}/assets/**/*`,
-          `${globs.assetsLegacyBase}/**/*.{ejs,html,vm}`,
-        ],
-      },
-      changed => copy({ pattern: changed, target: 'dist/statics' }),
-    );
+  await clientPromise;
+  await serverPromise;
 
-    watch(
-      {
-        pattern: [`assets/**/*`, `**/*.{ejs,html,vm}`],
-        cwd: path.resolve(globs.assetsBase),
-      },
-      changed =>
-        copy({
-          pattern: changed,
-          target: 'dist/statics',
-          source: globs.assetsBase,
-        }),
-    );
+  await new Promise((resolve, reject) => {
+    server.listen(3200, err => (err ? reject(err) : resolve()));
+  });
 
-    function transpileCss() {
-      if (shouldRunSass()) {
-        watch({ pattern: globs.scss }, changed =>
-          sass({
-            pattern: changed,
-            target: 'dist',
-            options: {
-              includePaths: ['node_modules', 'node_modules/compass-mixins/lib'],
-            },
-          }),
-        );
-      }
-
-      if (shouldRunLess()) {
-        watch({ pattern: globs.less }, changed =>
-          less({
-            pattern: changed,
-            target: 'dist',
-            paths: ['.', 'node_modules'],
-          }),
-        );
-      }
-
-      return [
-        !shouldRunSass()
-          ? null
-          : sass({
-              pattern: globs.scss,
-              target: 'dist',
-              options: {
-                includePaths: [
-                  'node_modules',
-                  'node_modules/compass-mixins/lib',
-                ],
-              },
-            }),
-        !shouldRunLess()
-          ? null
-          : less({
-              pattern: globs.less,
-              target: 'dist',
-              paths: ['.', 'node_modules'],
-            }),
-      ].filter(a => a);
-    }
-
-    async function transpileJavascriptAndRunServer() {
-      if (isTypescriptProject()) {
-        await typescript({
-          watch: true,
-          project: 'tsconfig.json',
-          rootDir: '.',
-          outDir: './dist/',
-        });
-        await appServer();
-
-        return watch(
-          { pattern: [path.join('dist', '**', '*.js'), 'index.js'] },
-          debounce(appServer, 500, { maxWait: 1000 }),
-        );
-      }
-
-      if (isBabelProject()) {
-        watch(
-          { pattern: [path.join(globs.base, '**', '*.js{,x}'), 'index.js'] },
-          async changed => {
-            await babel({ pattern: changed, target: 'dist', sourceMaps: true });
-            await appServer();
-          },
-        );
-
-        await babel({
-          pattern: [path.join(globs.base, '**', '*.js{,x}'), 'index.js'],
-          target: 'dist',
-          sourceMaps: true,
-        });
-        return appServer();
-      }
-
-      watch({ pattern: globs.babel }, appServer);
-
-      return appServer();
-    }
-  },
-  { persistent: true },
-);
+  console.info(`Server launched!`);
+};
