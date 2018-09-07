@@ -17,8 +17,9 @@ const path = require('path');
 const child_process = require('child_process');
 const express = require('express');
 const webpack = require('webpack');
+const cors = require('cors');
 const webpackDevMiddleware = require('webpack-dev-middleware');
-// const webpackHotMiddleware = require('webpack-hot-middleware');
+const webpackHotMiddleware = require('webpack-hot-middleware');
 const errorOverlayMiddleware = require('react-dev-utils/errorOverlayMiddleware');
 const webpackConfig = require('./webpack.config');
 
@@ -56,18 +57,44 @@ function createCompilationPromise(name, compiler, config) {
 }
 
 module.exports = async () => {
+  // Configure client-side hot module replacement
   const clientConfig = webpackConfig.find(config => config.name === 'client');
 
+  clientConfig.entry.client = [require.resolve('./webpackHotDevClient')].concat(
+    clientConfig.entry.client,
+  );
+
+  clientConfig.output.filename = clientConfig.output.filename.replace(
+    'chunkhash',
+    'hash',
+  );
+
+  clientConfig.output.chunkFilename = clientConfig.output.chunkFilename.replace(
+    'chunkhash',
+    'hash',
+  );
+
+  clientConfig.module.rules = clientConfig.module.rules.filter(
+    x => x.loader !== 'null-loader',
+  );
+
+  clientConfig.plugins.push(new webpack.HotModuleReplacementPlugin());
+
+  // Configure server-side hot module replacement
   const serverConfig = webpackConfig.find(config => config.name === 'server');
 
   serverConfig.output.hotUpdateMainFilename = 'updates/[hash].hot-update.json';
+
   serverConfig.output.hotUpdateChunkFilename =
     'updates/[id].[hash].hot-update.js';
+
   serverConfig.module.rules = serverConfig.module.rules.filter(
     x => x.loader !== 'null-loader',
   );
+
   serverConfig.plugins.push(new webpack.HotModuleReplacementPlugin());
 
+  // Configure compilation
   const multiCompiler = webpack(webpackConfig);
 
   const clientCompiler = multiCompiler.compilers.find(
@@ -92,6 +119,7 @@ module.exports = async () => {
 
   const server = express();
 
+  server.use(cors());
   server.use(errorOverlayMiddleware());
   server.use(express.static(path.resolve(__dirname, '../public')));
 
@@ -102,6 +130,8 @@ module.exports = async () => {
       watchOptions: {},
     }),
   );
+
+  server.use(webpackHotMiddleware(clientCompiler, { log: false }));
 
   let serverProcess;
 
