@@ -4,6 +4,8 @@ const webpack = require('webpack');
 // const WebpackAssetsManifest = require('webpack-assets-manifest');
 const nodeExternals = require('webpack-node-externals');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 // const overrideRules = require('./lib/overrideRules');
 const pkg = require(path.join(process.cwd(), './package.json'));
 
@@ -54,7 +56,7 @@ const config = {
 
   output: {
     path: resolvePath(BUILD_DIR, 'public/assets'),
-    publicPath: 'http://localhost:3200/', // '/assets/',
+    publicPath: 'http://localhost:3200/',
     pathinfo: isVerbose,
     filename: isDebug ? '[name].js' : '[name].[chunkhash:8].js',
     chunkFilename: isDebug
@@ -69,17 +71,43 @@ const config = {
     // Allow absolute paths in imports, e.g. import Button from 'components/Button'
     // Keep in sync with .flowconfig and .eslintrc
     modules: ['node_modules', 'src'],
+
+    extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
   },
+
+  plugins: [new CaseSensitivePathsPlugin()],
 
   module: {
     // Make missing exports an error instead of warning
     strictExportPresence: true,
 
     rules: [
+      {
+        test: /\.(ts|tsx)$/,
+        exclude: /(node_modules)/,
+        use: [
+          {
+            loader: 'ts-loader',
+            options: {
+              compilerOptions: {
+                // force es modules for tree shaking
+                module: 'esnext',
+                // use same module resolution
+                moduleResolution: 'node',
+                // allow using Promises, Array.prototype.includes, String.prototype.padStart, etc.
+                lib: ['es2017'],
+                // use async/await instead of embedding polyfills
+                target: 'es2017',
+              },
+            },
+          },
+        ],
+      },
+
       // Rules for JS / JSX
       {
         test: reScript,
-        include: [SRC_DIR, resolvePath('tools')],
+        include: [SRC_DIR],
         loader: 'babel-loader',
         options: {
           // https://github.com/babel/babel-loader#options
@@ -135,6 +163,10 @@ const config = {
           //   issuer: { not: [reStyle] },
           //   use: require.resolve('isomorphic-style-loader'),
           // },
+
+          {
+            loader: MiniCssExtractPlugin.loader,
+          },
 
           // Process external/third-party styles
           {
@@ -230,40 +262,6 @@ const config = {
           },
         ],
       },
-
-      // Convert plain text into JS module
-      {
-        test: /\.txt$/,
-        loader: 'raw-loader',
-      },
-
-      // Convert Markdown into HTML
-      {
-        test: /\.md$/,
-        loader: path.resolve(__dirname, './lib/markdown-loader.js'),
-      },
-
-      // Return public URL for all assets unless explicitly excluded
-      // DO NOT FORGET to update `exclude` list when you adding a new loader
-      {
-        exclude: [reScript, reStyle, reImage, /\.json$/, /\.txt$/, /\.md$/],
-        loader: 'file-loader',
-        options: {
-          name: staticAssetName,
-        },
-      },
-
-      // Exclude dev modules from production build
-      ...(isDebug
-        ? []
-        : [
-            {
-              test: resolvePath(
-                'node_modules/react-deep-force-update/lib/index.js',
-              ),
-              loader: 'null-loader',
-            },
-          ]),
     ],
   },
 
@@ -274,18 +272,19 @@ const config = {
 
   // Specify what bundle information gets displayed
   // https://webpack.js.org/configuration/stats/
-  stats: {
-    cached: isVerbose,
-    cachedAssets: isVerbose,
-    chunks: isVerbose,
-    chunkModules: isVerbose,
-    colors: true,
-    hash: isVerbose,
-    modules: isVerbose,
-    reasons: isDebug,
-    timings: true,
-    version: isVerbose,
-  },
+  stats: 'none',
+  // {
+  //   cached: isVerbose,
+  //   cachedAssets: isVerbose,
+  //   chunks: isVerbose,
+  //   chunkModules: isVerbose,
+  //   colors: true,
+  //   hash: isVerbose,
+  //   modules: isVerbose,
+  //   reasons: isDebug,
+  //   timings: true,
+  //   version: isVerbose,
+  // },
 
   // Choose a developer tool to enhance debugging
   // https://webpack.js.org/configuration/devtool/#devtool
@@ -310,6 +309,15 @@ const clientConfig = {
   },
 
   plugins: [
+    ...config.plugins,
+
+    new MiniCssExtractPlugin({
+      // Options similar to the same options in webpackOptions.output
+      // both options are optional
+      filename: '[name].css',
+      chunkFilename: '[id].css',
+    }),
+
     // Define free variables
     // https://webpack.js.org/plugins/define-plugin/
     new webpack.DefinePlugin({
@@ -475,15 +483,13 @@ const serverConfig = {
     // './chunk-manifest.json',
     // './asset-manifest.json',
     nodeExternals({
-      whitelist: [
-        // reStyle,
-        // reImage
-        'webpack/hot/poll?1000',
-      ],
+      whitelist: [reStyle, reImage, 'webpack/hot/poll?1000'],
     }),
   ],
 
   plugins: [
+    ...config.plugins,
+
     // Define free variables
     // https://webpack.js.org/plugins/define-plugin/
     new webpack.DefinePlugin({

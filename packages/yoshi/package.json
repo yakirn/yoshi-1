@@ -104,6 +104,7 @@
     "webpack": "^4.1.1",
     "webpack-bundle-analyzer": "^2.8.3",
     "webpack-dev-middleware": "~2.0.5",
+    "webpack-dev-server": "^3.1.8",
     "webpack-hot-client": "^4.1.1",
     "webpack-hot-middleware": "^2.23.1",
     "wix-tpa-style-loader": "~1.0.8",

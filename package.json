@@ -70,6 +70,7 @@
     "@babel/polyfill": "^7.0.0",
     "isomorphic-style-loader": "^4.0.0",
     "react-dev-utils": "^5.0.2",
+    "wait-port": "^0.2.2",
     "webpack-node-externals": "^1.7.2"
   }
 }
