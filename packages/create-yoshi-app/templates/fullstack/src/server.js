@@ -1,28 +1,43 @@
-let real = require('./real');
+import { Router } from 'express';
 
-let appInstance;
-let contextInstance;
+let context
+let router;
+let wrappedFunction;
 
-module.exports = (app, context) => {
-  if (!appInstance) {
-    appInstance = app;
+const makeHotExport = sourceModule => {
+  if (sourceModule.hot) {
+    sourceModule.hot.accept();
+
+    sourceModule.hot.dispose(() => {
+      setTimeout(() => {
+        router = wrappedFunction(Router(), context);
+      });
+    });
   }
-
-  if (!contextInstance) {
-    contextInstance = context;
-  }
-
-  return real(app, context);
 };
 
-if (module.hot) {
-  module.hot.accept('./real', () => {
-    try {
-      real = require('./real');
-      appInstance._router.stack = appInstance._router.stack.slice(0, 4);
-      real(appInstance, contextInstance);
-    } catch (error) {
-      console.error(error);
-    }
-  });
-}
+export default (sourceModule) => {
+  if (!sourceModule || !sourceModule.id) {
+    throw new Error(
+      'Could not find the `id` property in the `module` you have provided',
+    );
+  }
+
+  makeHotExport(sourceModule);
+
+  return _wrappedFunction => {
+    wrappedFunction = _wrappedFunction;
+
+    return (app, _context) => {
+      context = _context;
+
+      router = wrappedFunction(Router(), context);
+
+      app.use((req, res) => {
+        router.handle(req, res);
+      });
+
+      return app;
+    };
+  };
+};

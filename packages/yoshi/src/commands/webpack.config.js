@@ -410,7 +410,7 @@ const serverConfig = {
     server: [
       // require.resolve('@babel/polyfill'),
       'webpack/hot/poll?1000',
-      './src/server.js',
+      './src/real.js',
     ],
   },
 
@@ -421,6 +421,7 @@ const serverConfig = {
     chunkFilename: 'chunks/[name].js',
     libraryTarget: 'umd',
     // library: pkg.name,
+    libraryExport: 'default',
     globalObject: "(typeof self !== 'undefined' ? self : this)",
   },
 
