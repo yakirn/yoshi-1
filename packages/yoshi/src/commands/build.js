@@ -83,14 +83,13 @@ module.exports = runner.command(
       const productionCallbackPath = require.resolve(
         '../webpack-production-callback',
       );
-      const debugCallbackPath = require.resolve('../webpack-debug-callback');
       const webpackConfig = require(configPath)();
 
       const defaultOptions = {
         configPath,
       };
 
-      const webpackProduction = () => {
+      if (shouldRunWebpack(webpackConfig)) {
         return webpack(
           {
             ...defaultOptions,
@@ -99,29 +98,11 @@ module.exports = runner.command(
               min: true,
               production: true,
               analyze: cliArgs.analyze,
+              sourceMap: cliArgs['source-map'],
             },
           },
           { title: 'webpack-production' },
         );
-      };
-
-      const webpackDebug = () => {
-        return webpack(
-          {
-            ...defaultOptions,
-            callbackPath: debugCallbackPath,
-            configParams: { min: false, production: true },
-          },
-          { title: 'webpack-debug' },
-        );
-      };
-
-      if (shouldRunWebpack(webpackConfig)) {
-        if (cliArgs.min === false) {
-          return webpackDebug();
-        }
-
-        return Promise.all([webpackProduction(), webpackDebug()]);
       }
 
       return Promise.resolve();

@@ -42,9 +42,9 @@ prog
 prog
   .command('build')
   .description('Build the app for production')
-  .option('--output', 'The output directory for static assets')
   .option('--analyze', 'Run webpack-bundle-analyzer plugin')
   .option('--no-min', 'Do not output minified bundle')
+  .option('--source-map', 'Explictly emit bundle source maps')
   .action(() => runCLI('build'));
 
 prog

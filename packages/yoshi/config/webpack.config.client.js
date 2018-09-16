@@ -54,6 +54,7 @@ const config = ({
   separateCss = projectConfig.separateCss,
   hmr,
   analyze,
+  sourceMap,
 } = {}) => {
   const disableModuleConcat =
     process.env.DISABLE_MODULE_CONCATENATION === 'true';
@@ -174,7 +175,12 @@ const config = ({
           ]),
     ],
 
-    devtool: inTeamCity() ? 'source-map' : 'cheap-module-source-map',
+    devtool:
+      inTeamCity() || sourceMap
+        ? 'source-map'
+        : !isProduction()
+          ? 'cheap-module-source-map'
+          : false,
 
     performance: {
       ...(isProduction()

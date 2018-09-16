@@ -35,8 +35,8 @@ The following are the default values for the CDN server's port, mount directory 
 
 Flag | Short Flag | Description | Default Value
 ---- | ---------- | ----------- | ------------
---output <dir> | | The output directory for static assets. | `statics`
 --analyze | | run webpack-bundle-analyzer plugin. |
+--source-map | | Explictly emit bundle source maps. |
 
 This task will perform the following:
 
