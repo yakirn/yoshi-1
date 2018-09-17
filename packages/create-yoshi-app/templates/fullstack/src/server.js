@@ -6,7 +6,7 @@ let wrappedFunction;
 
 const makeHotExport = sourceModule => {
   if (sourceModule.hot) {
-    sourceModule.hot.accept(() => {
+    const updateRouter = () => {
       setTimeout(() => {
         try {
           router = wrappedFunction(Router(), context);
@@ -14,33 +14,19 @@ const makeHotExport = sourceModule => {
         //   console.log(error);
         }
       });
-    });
+    };
+
+    sourceModule.hot.accept(updateRouter);
 
     if (sourceModule.hot.addStatusHandler) {
       if (sourceModule.hot.status() === 'idle') {
         sourceModule.hot.addStatusHandler(status => {
           if (status === 'apply') {
-            setTimeout(() => {
-              // try {
-                router = wrappedFunction(Router(), context);
-              // } catch (error) {
-              //   console.log(error);
-              // }
-            });
+            updateRouter();
           }
         })
       }
     }
-
-    // sourceModule.hot.dispose(() => {
-    //   setTimeout(() => {
-    //     // try {
-    //       router = wrappedFunction(Router(), context);
-    //     // } catch (error) {
-    //     //   console.log(error);
-    //     // }
-    //   });
-    // });
   }
 };
 

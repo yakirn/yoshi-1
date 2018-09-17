@@ -9,7 +9,12 @@ module.exports = async command => {
   const appDirectory = fs.realpathSync(process.cwd());
   const action = require(`./commands/${command}`);
 
-  await action();
+  try {
+    await action();
+  } catch (error) {
+    console.error(error);
+    process.exit(1);
+  }
   // try {
   //   const { persistent = false } = await action({
   //     context: presetPath,

@@ -55,7 +55,7 @@ function createCompilationPromise(name, compiler, config) {
         // console.info(
         //   `[${format(timeEnd)}] Failed to compile '${name}' after ${time} ms`,
         // );
-        console.log(stats.toString('errors-only'));
+        // console.log(stats.toString('errors-only'));
         reject(new Error('Compilation failed!'));
       } else {
         // console.info(
@@ -90,15 +90,15 @@ module.exports = async () => {
     ...clientConfig.entry.client,
   ];
 
-  // clientConfig.output.filename = clientConfig.output.filename.replace(
-  //   'chunkhash',
-  //   'hash',
-  // );
+  clientConfig.output.filename = clientConfig.output.filename.replace(
+    'chunkhash',
+    'hash',
+  );
 
-  // clientConfig.output.chunkFilename = clientConfig.output.chunkFilename.replace(
-  //   'chunkhash',
-  //   'hash',
-  // );
+  clientConfig.output.chunkFilename = clientConfig.output.chunkFilename.replace(
+    'chunkhash',
+    'hash',
+  );
 
   clientConfig.module.rules = clientConfig.module.rules.filter(
     x => x.loader !== 'null-loader',
@@ -216,5 +216,5 @@ module.exports = async () => {
     output: 'silent',
   });
 
-  openBrowser('http://localhost:3000');
+  // openBrowser('http://localhost:3000');
 };
