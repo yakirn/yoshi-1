@@ -55,7 +55,7 @@ function createCompilationPromise(name, compiler, config) {
         // console.info(
         //   `[${format(timeEnd)}] Failed to compile '${name}' after ${time} ms`,
         // );
-        // console.log(stats.toString('errors-only'));
+        console.log(stats.toString('errors-only'));
         reject(new Error('Compilation failed!'));
       } else {
         // console.info(
@@ -89,10 +89,10 @@ module.exports = async () => {
   // Configure client-side hot module replacement
   const clientConfig = webpackConfig.find(config => config.name === 'client');
 
-  clientConfig.entry.client = [
+  clientConfig.entry.app = [
     // require('react-dev-utils/webpackHotDevClient'),
     require.resolve('./webpackHotDevClient'),
-    ...clientConfig.entry.client,
+    clientConfig.entry.app,
   ];
 
   clientConfig.output.filename = clientConfig.output.filename.replace(

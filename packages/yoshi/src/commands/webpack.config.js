@@ -19,6 +19,7 @@ const project = require('yoshi-config');
 const {
   unprocessedModules,
   toIdentifier,
+  isSingleEntry,
   isProduction: checkIsProduction,
   inTeamCity: checkInTeamCity,
 } = require('yoshi-helpers');
@@ -76,6 +77,8 @@ const useSplitChunks = project.splitChunks;
 const splitChunksConfig = isObject(useSplitChunks)
   ? useSplitChunks
   : defaultSplitChunksConfig;
+
+const entry = project.entry || project.defaultEntry;
 
 function overrideRules(rules, patch) {
   return rules.map(ruleToPatch => {
@@ -323,12 +326,7 @@ module.exports = function createWebpackConfig({
 
     target: 'web',
 
-    entry: {
-      client: [
-        // require.resolve('@babel/polyfill'),
-        './client.js',
-      ],
-    },
+    entry: isSingleEntry(entry) ? { app: entry } : entry,
 
     optimization: {
       minimize: !isDebug,
