@@ -8,6 +8,7 @@ const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
+const StylableWebpackPlugin = require('stylable-webpack-plugin');
 const TpaStyleWebpackPlugin = require('tpa-style-webpack-plugin');
 const RtlCssPlugin = require('rtlcss-webpack-plugin');
 const DynamicPublicPath = require('../webpack-plugins/dynamic-public-path');
@@ -60,6 +61,8 @@ const publicPath =
         '',
       )}/`
     : '/';
+
+const stylableSeparateCss = project.enhancedTpaStyle;
 
 // CSS Nano options http://cssnano.co/
 const minimizeCssOptions = {
@@ -415,13 +418,17 @@ module.exports = function createWebpackConfig({
       // You can remove this if you don't use Moment.js:
       new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
 
-      ...(isDebug
-        ? []
-        : [
-            // Webpack Bundle Analyzer
-            // https://github.com/th0r/webpack-bundle-analyzer
-            ...(isAnalyze ? [new BundleAnalyzerPlugin()] : []),
-          ]),
+      // https://github.com/wix/stylable
+      new StylableWebpackPlugin({
+        outputCSS: stylableSeparateCss,
+        filename: '[name].stylable.bundle.css',
+        includeCSSInJS: !stylableSeparateCss,
+        optimize: { classNameOptimizations: false, shortNamespaces: false },
+      }),
+
+      // Webpack Bundle Analyzer
+      // https://github.com/th0r/webpack-bundle-analyzer
+      ...(isAnalyze ? [new BundleAnalyzerPlugin()] : []),
     ],
 
     module: {
