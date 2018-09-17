@@ -14,11 +14,6 @@ const resolvePath = (...args) => path.resolve(ROOT_DIR, ...args);
 const SRC_DIR = resolvePath('src');
 const BUILD_DIR = resolvePath('build');
 
-const isDebug = !process.argv.includes('--release');
-const isVerbose = process.argv.includes('--verbose');
-const isAnalyze =
-  process.argv.includes('--analyze') || process.argv.includes('--analyse');
-
 const reScript = /\.(js|jsx|mjs)$/;
 const reStyle = /\.(css|less|styl|scss|sass|sss)$/;
 const reAssets = /\.(png|jpg|jpeg|gif|svg|woff|woff2|ttf|otf|eot|wav|mp3)$/;
@@ -41,403 +36,410 @@ function overrideRules(rules, patch) {
   });
 }
 
-//
-// Common configuration chunk to be used for both
-// client-side (client.js) and server-side (server.js) bundles
-// -----------------------------------------------------------------------------
+module.exports = function createWebpackConfig({
+  isAnalyze = false,
+  isDebug = true,
+}) {
+  //
+  // Common configuration chunk to be used for both
+  // client-side (client.js) and server-side (server.js) bundles
+  // -----------------------------------------------------------------------------
 
-const config = {
-  context: ROOT_DIR,
+  const config = {
+    context: ROOT_DIR,
 
-  mode: isDebug ? 'development' : 'production',
+    mode: isDebug ? 'development' : 'production',
 
-  output: {
-    path: resolvePath(BUILD_DIR, 'public/assets'),
-    publicPath: 'http://localhost:3200/',
-    pathinfo: isVerbose,
-    filename: isDebug ? '[name].js' : '[name].[chunkhash:8].js',
-    chunkFilename: isDebug
-      ? '[name].chunk.js'
-      : '[name].[chunkhash:8].chunk.js',
-    // Point sourcemap entries to original disk location (format as URL on Windows)
-    devtoolModuleFilenameTemplate: info =>
-      path.resolve(info.absoluteResourcePath).replace(/\\/g, '/'),
-  },
+    output: {
+      path: resolvePath(BUILD_DIR, 'public/assets'),
+      publicPath: 'http://localhost:3200/',
+      pathinfo: isDebug,
+      filename: isDebug ? '[name].js' : '[name].[chunkhash:8].js',
+      chunkFilename: isDebug
+        ? '[name].chunk.js'
+        : '[name].[chunkhash:8].chunk.js',
+      // Point sourcemap entries to original disk location (format as URL on Windows)
+      devtoolModuleFilenameTemplate: info =>
+        path.resolve(info.absoluteResourcePath).replace(/\\/g, '/'),
+    },
 
-  resolve: {
-    // Allow absolute paths in imports, e.g. import Button from 'components/Button'
-    // Keep in sync with .flowconfig and .eslintrc
-    modules: ['node_modules', 'src'],
+    resolve: {
+      // Allow absolute paths in imports, e.g. import Button from 'components/Button'
+      // Keep in sync with .flowconfig and .eslintrc
+      modules: ['node_modules', 'src'],
 
-    extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
-  },
+      extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
+    },
 
-  plugins: [new CaseSensitivePathsPlugin()],
+    plugins: [new CaseSensitivePathsPlugin()],
 
-  module: {
-    // Make missing exports an error instead of warning
-    strictExportPresence: true,
+    module: {
+      // Make missing exports an error instead of warning
+      strictExportPresence: true,
 
-    rules: [
-      // Rules for TS / TSX
-      {
-        test: /\.(ts|tsx)$/,
-        include: [SRC_DIR],
-        use: [
-          {
-            loader: require.resolve('thread-loader'),
-            options: {
-              workers: require('os').cpus().length - 1,
-            },
-          },
-          {
-            loader: require.resolve('ts-loader'),
-            options: {
-              // This implicitly sets `transpileOnly` to `true`
-              happyPackMode: true,
-              compilerOptions: {
-                // force es modules for tree shaking
-                module: 'esnext',
-                // use same module resolution
-                moduleResolution: 'node',
-                // allow using Promises, Array.prototype.includes, String.prototype.padStart, etc.
-                lib: ['es2017'],
-                // use async/await instead of embedding polyfills
-                target: 'es2017',
+      rules: [
+        // Rules for TS / TSX
+        {
+          test: /\.(ts|tsx)$/,
+          include: [SRC_DIR],
+          use: [
+            {
+              loader: require.resolve('thread-loader'),
+              options: {
+                workers: require('os').cpus().length - 1,
               },
             },
-          },
-        ],
-      },
-
-      // Rules for JS / JSX
-      {
-        test: reScript,
-        include: [SRC_DIR],
-        use: [
-          {
-            loader: require.resolve('thread-loader'),
-            options: {
-              workers: require('os').cpus().length - 1,
+            {
+              loader: require.resolve('ts-loader'),
+              options: {
+                // This implicitly sets `transpileOnly` to `true`
+                happyPackMode: true,
+                compilerOptions: {
+                  // force es modules for tree shaking
+                  module: 'esnext',
+                  // use same module resolution
+                  moduleResolution: 'node',
+                  // allow using Promises, Array.prototype.includes, String.prototype.padStart, etc.
+                  lib: ['es2017'],
+                  // use async/await instead of embedding polyfills
+                  target: 'es2017',
+                },
+              },
             },
-          },
-          {
-            loader: require.resolve('babel-loader'),
-            options: {
-              // https://github.com/babel/babel-loader#options
-              cacheDirectory: isDebug,
+          ],
+        },
 
-              // https://babeljs.io/docs/usage/options/
-              babelrc: false,
-              presets: [
-                // A Babel preset that can automatically determine the Babel plugins and polyfills
-                // https://github.com/babel/babel-preset-env
-                [
-                  require.resolve('babel-preset-yoshi'),
-                  {
-                    targets: {
-                      browsers: pkg.browserslist,
+        // Rules for JS / JSX
+        {
+          test: reScript,
+          include: [SRC_DIR],
+          use: [
+            {
+              loader: require.resolve('thread-loader'),
+              options: {
+                workers: require('os').cpus().length - 1,
+              },
+            },
+            {
+              loader: require.resolve('babel-loader'),
+              options: {
+                // https://github.com/babel/babel-loader#options
+                cacheDirectory: isDebug,
+
+                // https://babeljs.io/docs/usage/options/
+                babelrc: false,
+                presets: [
+                  // A Babel preset that can automatically determine the Babel plugins and polyfills
+                  // https://github.com/babel/babel-preset-env
+                  [
+                    require.resolve('babel-preset-yoshi'),
+                    {
+                      targets: {
+                        browsers: pkg.browserslist,
+                      },
+                      forceAllTransforms: !isDebug, // for UglifyJS
+                      modules: false,
+                      useBuiltIns: false,
+                      debug: false,
                     },
-                    forceAllTransforms: !isDebug, // for UglifyJS
-                    modules: false,
-                    useBuiltIns: false,
-                    debug: false,
-                  },
+                  ],
                 ],
+              },
+            },
+          ],
+        },
+
+        // Rules for Style Sheets
+        {
+          test: reStyle,
+          rules: [
+            {
+              loader: MiniCssExtractPlugin.loader,
+            },
+
+            // Process internal/project styles (from src folder)
+            {
+              oneOf: [
+                {
+                  test: /\.global\.[A-z]*$/,
+                  loader: require.resolve('css-loader'),
+                  options: {
+                    // CSS Loader https://github.com/webpack/css-loader
+                    importLoaders: 1,
+                    sourceMap: isDebug,
+                    // CSS Modules https://github.com/css-modules/css-modules
+                    modules: false,
+                    // CSS Nano http://cssnano.co/
+                    minimize: isDebug ? false : minimizeCssOptions,
+                  },
+                },
+                {
+                  loader: require.resolve('css-loader'),
+                  options: {
+                    // CSS Loader https://github.com/webpack/css-loader
+                    importLoaders: 1,
+                    sourceMap: isDebug,
+                    // CSS Modules https://github.com/css-modules/css-modules
+                    modules: true,
+                    localIdentName: isDebug
+                      ? '[name]-[local]-[hash:base64:5]'
+                      : '[hash:base64:5]',
+                    // CSS Nano http://cssnano.co/
+                    minimize: isDebug ? false : minimizeCssOptions,
+                  },
+                },
               ],
             },
-          },
-        ],
-      },
 
-      // Rules for Style Sheets
-      {
-        test: reStyle,
-        rules: [
-          {
-            loader: MiniCssExtractPlugin.loader,
-          },
-
-          // Process internal/project styles (from src folder)
-          {
-            oneOf: [
-              {
-                test: /\.global\.[A-z]*$/,
-                loader: require.resolve('css-loader'),
-                options: {
-                  // CSS Loader https://github.com/webpack/css-loader
-                  importLoaders: 1,
-                  sourceMap: isDebug,
-                  // CSS Modules https://github.com/css-modules/css-modules
-                  modules: false,
-                  // CSS Nano http://cssnano.co/
-                  minimize: isDebug ? false : minimizeCssOptions,
-                },
+            // Apply PostCSS plugins including autoprefixer
+            {
+              loader: require.resolve('postcss-loader'),
+              options: {
+                // Necessary for external CSS imports to work
+                // https://github.com/facebookincubator/create-react-app/issues/2677
+                ident: 'postcss',
+                plugins: [require('autoprefixer')],
+                sourceMap: isDebug,
               },
-              {
-                loader: require.resolve('css-loader'),
-                options: {
-                  // CSS Loader https://github.com/webpack/css-loader
-                  importLoaders: 1,
-                  sourceMap: isDebug,
-                  // CSS Modules https://github.com/css-modules/css-modules
-                  modules: true,
-                  localIdentName: isDebug
-                    ? '[name]-[local]-[hash:base64:5]'
-                    : '[hash:base64:5]',
-                  // CSS Nano http://cssnano.co/
-                  minimize: isDebug ? false : minimizeCssOptions,
-                },
+            },
+
+            // Compile Less to CSS
+            // https://github.com/webpack-contrib/less-loader
+            // Install dependencies before uncommenting: yarn add --dev less-loader less
+            {
+              test: /\.less$/,
+              loader: require.resolve('less-loader'),
+            },
+
+            // Compile Sass to CSS
+            // https://github.com/webpack-contrib/sass-loader
+            // Install dependencies before uncommenting: yarn add --dev sass-loader node-sass
+            {
+              test: /\.(scss|sass)$/,
+              loader: require.resolve('sass-loader'),
+            },
+          ],
+        },
+
+        // Rules for assets
+        {
+          oneOf: [
+            // Inline SVG images into CSS
+            {
+              test: /\.inline\.svg$/,
+              loader: require.resolve('svg-inline-loader'),
+            },
+
+            // Or return public URL to image resource
+            {
+              test: reAssets,
+              loader: require.resolve('url-loader'),
+              options: {
+                name: '[path][name].[ext]?[hash]',
+                limit: 10000,
               },
-            ],
-          },
-
-          // Apply PostCSS plugins including autoprefixer
-          {
-            loader: require.resolve('postcss-loader'),
-            options: {
-              // Necessary for external CSS imports to work
-              // https://github.com/facebookincubator/create-react-app/issues/2677
-              ident: 'postcss',
-              plugins: [require('autoprefixer')],
-              sourceMap: isDebug,
             },
-          },
+          ],
+        },
 
-          // Compile Less to CSS
-          // https://github.com/webpack-contrib/less-loader
-          // Install dependencies before uncommenting: yarn add --dev less-loader less
-          {
-            test: /\.less$/,
-            loader: require.resolve('less-loader'),
-          },
+        // Rules for Markdown
+        {
+          test: /\.md$/,
+          loader: require.resolve('raw-loader'),
+        },
 
-          // Compile Sass to CSS
-          // https://github.com/webpack-contrib/sass-loader
-          // Install dependencies before uncommenting: yarn add --dev sass-loader node-sass
-          {
-            test: /\.(scss|sass)$/,
-            loader: require.resolve('sass-loader'),
-          },
-        ],
-      },
+        // Rules for HAML
+        {
+          test: /\.haml$/,
+          loader: require.resolve('ruby-haml-loader'),
+        },
 
-      // Rules for assets
-      {
-        oneOf: [
-          // Inline SVG images into CSS
-          {
-            test: /\.inline\.svg$/,
-            loader: require.resolve('svg-inline-loader'),
-          },
+        // Rules for HTML
+        {
+          test: /\.html$/,
+          loader: 'html-loader',
+        },
 
-          // Or return public URL to image resource
-          {
-            test: reAssets,
-            loader: require.resolve('url-loader'),
+        // Rules for GraphQL
+        {
+          test: /\.(graphql|gql)$/,
+          include: [SRC_DIR],
+          loader: require.resolve('graphql-tag/loader'),
+        },
+      ],
+    },
+
+    // Don't attempt to continue if there are any errors.
+    bail: !isDebug,
+
+    cache: isDebug,
+
+    // Specify what bundle information gets displayed
+    // https://webpack.js.org/configuration/stats/
+    stats: 'none',
+
+    // Choose a developer tool to enhance debugging
+    // https://webpack.js.org/configuration/devtool/#devtool
+    devtool: isDebug ? 'cheap-module-inline-source-map' : 'source-map',
+  };
+
+  //
+  // Configuration for the client-side bundle (client.js)
+  // -----------------------------------------------------------------------------
+
+  const clientConfig = {
+    ...config,
+
+    name: 'client',
+
+    target: 'web',
+
+    entry: {
+      client: [
+        // require.resolve('@babel/polyfill'),
+        './src/client.js',
+      ],
+    },
+
+    plugins: [
+      ...config.plugins,
+
+      new MiniCssExtractPlugin({
+        // Options similar to the same options in webpackOptions.output
+        // both options are optional
+        filename: '[name].css',
+        chunkFilename: '[id].css',
+      }),
+
+      // Define free variables
+      // https://webpack.js.org/plugins/define-plugin/
+      new webpack.DefinePlugin({
+        'process.env.BROWSER': true,
+        __DEV__: isDebug,
+      }),
+
+      // Moment.js is an extremely popular library that bundles large locale files
+      // by default due to how Webpack interprets its code. This is a practical
+      // solution that requires the user to opt into importing specific locales.
+      // https://github.com/jmblog/how-to-optimize-momentjs-with-webpack
+      // You can remove this if you don't use Moment.js:
+      new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
+
+      ...(isDebug
+        ? []
+        : [
+            // Webpack Bundle Analyzer
+            // https://github.com/th0r/webpack-bundle-analyzer
+            ...(isAnalyze ? [new BundleAnalyzerPlugin()] : []),
+          ]),
+    ],
+
+    // Some libraries import Node modules but don't use them in the browser.
+    // Tell Webpack to provide empty mocks for them so importing them works.
+    // https://webpack.js.org/configuration/node/
+    // https://github.com/webpack/node-libs-browser/tree/master/mock
+    node: {
+      fs: 'empty',
+      net: 'empty',
+      tls: 'empty',
+    },
+  };
+
+  //
+  // Configuration for the server-side bundle (server.js)
+  // -----------------------------------------------------------------------------
+
+  const serverConfig = {
+    ...config,
+
+    name: 'server',
+
+    target: 'node',
+
+    entry: {
+      server: [
+        // require.resolve('@babel/polyfill'),
+        'webpack/hot/poll?1000',
+        './src/real.js',
+      ],
+    },
+
+    output: {
+      ...config.output,
+      path: BUILD_DIR,
+      filename: '[name].js',
+      chunkFilename: 'chunks/[name].js',
+      libraryTarget: 'umd',
+      // library: pkg.name,
+      libraryExport: 'default',
+      globalObject: "(typeof self !== 'undefined' ? self : this)",
+    },
+
+    // Webpack mutates resolve object, so clone it to avoid issues
+    // https://github.com/webpack/webpack/issues/4817
+    resolve: {
+      ...config.resolve,
+    },
+
+    module: {
+      ...config.module,
+
+      rules: overrideRules(config.module.rules, rule => {
+        // Override paths to static assets
+        if (
+          rule.loader === require.resolve('file-loader') ||
+          rule.loader === require.resolve('url-loader') ||
+          rule.loader === require.resolve('svg-url-loader')
+        ) {
+          return {
+            ...rule,
             options: {
-              name: '[path][name].[ext]?[hash]',
-              limit: 10000,
+              ...rule.options,
+              emitFile: false,
             },
-          },
-        ],
-      },
+          };
+        }
 
-      // Rules for Markdown
-      {
-        test: /\.md$/,
-        loader: require.resolve('raw-loader'),
-      },
+        return rule;
+      }),
+    },
 
-      // Rules for HAML
-      {
-        test: /\.haml$/,
-        loader: require.resolve('ruby-haml-loader'),
-      },
-
-      // Rules for HTML
-      {
-        test: /\.html$/,
-        loader: 'html-loader',
-      },
-
-      // Rules for GraphQL
-      {
-        test: /\.(graphql|gql)$/,
-        include: [SRC_DIR],
-        loader: require.resolve('graphql-tag/loader'),
-      },
+    externals: [
+      nodeExternals({
+        whitelist: [reStyle, reAssets, 'webpack/hot/poll?1000'],
+      }),
     ],
-  },
 
-  // Don't attempt to continue if there are any errors.
-  bail: !isDebug,
+    plugins: [
+      ...config.plugins,
 
-  cache: isDebug,
+      // Define free variables
+      // https://webpack.js.org/plugins/define-plugin/
+      new webpack.DefinePlugin({
+        'process.env.BROWSER': false,
+        __DEV__: isDebug,
+      }),
 
-  // Specify what bundle information gets displayed
-  // https://webpack.js.org/configuration/stats/
-  stats: 'none',
-
-  // Choose a developer tool to enhance debugging
-  // https://webpack.js.org/configuration/devtool/#devtool
-  devtool: isDebug ? 'cheap-module-inline-source-map' : 'source-map',
-};
-
-//
-// Configuration for the client-side bundle (client.js)
-// -----------------------------------------------------------------------------
-
-const clientConfig = {
-  ...config,
-
-  name: 'client',
-  target: 'web',
-
-  entry: {
-    client: [
-      // require.resolve('@babel/polyfill'),
-      './src/client.js',
+      // Adds a banner to the top of each generated chunk
+      // https://webpack.js.org/plugins/banner-plugin/
+      new webpack.BannerPlugin({
+        banner: 'require("source-map-support").install();',
+        raw: true,
+        entryOnly: false,
+      }),
     ],
-  },
 
-  plugins: [
-    ...config.plugins,
+    // Do not replace node globals with polyfills
+    // https://webpack.js.org/configuration/node/
+    node: {
+      console: false,
+      global: false,
+      process: false,
+      Buffer: false,
+      __filename: false,
+      __dirname: false,
+    },
+  };
 
-    new MiniCssExtractPlugin({
-      // Options similar to the same options in webpackOptions.output
-      // both options are optional
-      filename: '[name].css',
-      chunkFilename: '[id].css',
-    }),
-
-    // Define free variables
-    // https://webpack.js.org/plugins/define-plugin/
-    new webpack.DefinePlugin({
-      'process.env.BROWSER': true,
-      __DEV__: isDebug,
-    }),
-
-    // Moment.js is an extremely popular library that bundles large locale files
-    // by default due to how Webpack interprets its code. This is a practical
-    // solution that requires the user to opt into importing specific locales.
-    // https://github.com/jmblog/how-to-optimize-momentjs-with-webpack
-    // You can remove this if you don't use Moment.js:
-    new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
-
-    ...(isDebug
-      ? []
-      : [
-          // Webpack Bundle Analyzer
-          // https://github.com/th0r/webpack-bundle-analyzer
-          ...(isAnalyze ? [new BundleAnalyzerPlugin()] : []),
-        ]),
-  ],
-
-  // Some libraries import Node modules but don't use them in the browser.
-  // Tell Webpack to provide empty mocks for them so importing them works.
-  // https://webpack.js.org/configuration/node/
-  // https://github.com/webpack/node-libs-browser/tree/master/mock
-  node: {
-    fs: 'empty',
-    net: 'empty',
-    tls: 'empty',
-  },
+  return [clientConfig, serverConfig];
 };
-
-//
-// Configuration for the server-side bundle (server.js)
-// -----------------------------------------------------------------------------
-
-const serverConfig = {
-  ...config,
-
-  name: 'server',
-  target: 'node',
-
-  entry: {
-    server: [
-      // require.resolve('@babel/polyfill'),
-      'webpack/hot/poll?1000',
-      './src/real.js',
-    ],
-  },
-
-  output: {
-    ...config.output,
-    path: BUILD_DIR,
-    filename: '[name].js',
-    chunkFilename: 'chunks/[name].js',
-    libraryTarget: 'umd',
-    // library: pkg.name,
-    libraryExport: 'default',
-    globalObject: "(typeof self !== 'undefined' ? self : this)",
-  },
-
-  // Webpack mutates resolve object, so clone it to avoid issues
-  // https://github.com/webpack/webpack/issues/4817
-  resolve: {
-    ...config.resolve,
-  },
-
-  module: {
-    ...config.module,
-
-    rules: overrideRules(config.module.rules, rule => {
-      // Override paths to static assets
-      if (
-        rule.loader === require.resolve('file-loader') ||
-        rule.loader === require.resolve('url-loader') ||
-        rule.loader === require.resolve('svg-url-loader')
-      ) {
-        return {
-          ...rule,
-          options: {
-            ...rule.options,
-            emitFile: false,
-          },
-        };
-      }
-
-      return rule;
-    }),
-  },
-
-  externals: [
-    nodeExternals({
-      whitelist: [reStyle, reAssets, 'webpack/hot/poll?1000'],
-    }),
-  ],
-
-  plugins: [
-    ...config.plugins,
-
-    // Define free variables
-    // https://webpack.js.org/plugins/define-plugin/
-    new webpack.DefinePlugin({
-      'process.env.BROWSER': false,
-      __DEV__: isDebug,
-    }),
-
-    // Adds a banner to the top of each generated chunk
-    // https://webpack.js.org/plugins/banner-plugin/
-    new webpack.BannerPlugin({
-      banner: 'require("source-map-support").install();',
-      raw: true,
-      entryOnly: false,
-    }),
-  ],
-
-  // Do not replace node globals with polyfills
-  // https://webpack.js.org/configuration/node/
-  node: {
-    console: false,
-    global: false,
-    process: false,
-    Buffer: false,
-    __filename: false,
-    __dirname: false,
-  },
-};
-
-module.exports = [clientConfig, serverConfig];

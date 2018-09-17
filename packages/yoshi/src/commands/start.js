@@ -31,7 +31,7 @@ const {
 } = require('react-dev-utils/WebpackDevServerUtils');
 // const clearConsole = require('react-dev-utils/clearConsole');
 const openBrowser = require('react-dev-utils/openBrowser');
-const webpackConfig = require('./webpack.config');
+const createWebpackConfig = require('./webpack.config');
 
 // const isInteractive = process.stdout.isTTY;
 
@@ -81,6 +81,11 @@ function serverLogPrefixer() {
 const appName = require(path.join(process.cwd(), 'package.json')).name;
 
 module.exports = async () => {
+  const webpackConfig = createWebpackConfig({
+    isDebug: true,
+    isAnalyze: false,
+  });
+
   // Configure client-side hot module replacement
   const clientConfig = webpackConfig.find(config => config.name === 'client');
 
