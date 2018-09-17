@@ -66,12 +66,21 @@ module.exports = function createWebpackConfig({
     resolve: {
       // Allow absolute paths in imports, e.g. import Button from 'components/Button'
       // Keep in sync with .flowconfig and .eslintrc
-      modules: ['node_modules', 'src'],
+      modules: ['node_modules', SRC_DIR],
 
+      // These are the reasonable defaults supported by the Node ecosystem.
+      // We also include JSX as a common component filename extension to support
+      // some tools, although we do not recommend using it, see:
+      // https://github.com/facebookincubator/create-react-app/issues/290
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
     },
 
-    plugins: [new CaseSensitivePathsPlugin()],
+    plugins: [
+      // Watcher doesn't work well if you mistype casing in a path so we use
+      // a plugin that prints an error when you attempt to do this.
+      // See https://github.com/facebookincubator/create-react-app/issues/240
+      new CaseSensitivePathsPlugin(),
+    ],
 
     module: {
       // Make missing exports an error instead of warning
