@@ -108,7 +108,7 @@ module.exports = function createWebpackConfig({
   const config = {
     context: SRC_DIR,
 
-    mode: isProduction ? 'development' : 'production',
+    mode: isProduction ? 'production' : 'development',
 
     output: {
       path: resolvePath(BUILD_DIR, 'public/assets'),
