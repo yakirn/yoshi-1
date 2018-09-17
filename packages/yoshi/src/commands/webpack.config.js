@@ -21,10 +21,7 @@ const isAnalyze =
 
 const reScript = /\.(js|jsx|mjs)$/;
 const reStyle = /\.(css|less|styl|scss|sass|sss)$/;
-const reImage = /\.(bmp|gif|jpg|jpeg|png|svg)$/;
-const staticAssetName = isDebug
-  ? '[path][name].[ext]?[hash:8]'
-  : '[hash:8].[ext]';
+const reAssets = /\.(png|jpg|jpeg|gif|svg|woff|woff2|ttf|otf|eot|wav|mp3)$/;
 
 // CSS Nano options http://cssnano.co/
 const minimizeCssOptions = {
@@ -225,40 +222,22 @@ const config = {
         ],
       },
 
-      // Rules for images
+      // Rules for assets
       {
-        test: reImage,
         oneOf: [
-          // Inline lightweight images into CSS
+          // Inline SVG images into CSS
           {
-            issuer: reStyle,
-            oneOf: [
-              // Inline lightweight SVGs as UTF-8 encoded DataUrl string
-              {
-                test: /\.svg$/,
-                loader: require.resolve('svg-url-loader'),
-                options: {
-                  name: staticAssetName,
-                  limit: 4096, // 4kb
-                },
-              },
-
-              // Inline lightweight images as Base64 encoded DataUrl string
-              {
-                loader: require.resolve('url-loader'),
-                options: {
-                  name: staticAssetName,
-                  limit: 4096, // 4kb
-                },
-              },
-            ],
+            test: /\.inline\.svg$/,
+            loader: require.resolve('svg-inline-loader'),
           },
 
           // Or return public URL to image resource
           {
-            loader: require.resolve('file-loader'),
+            test: reAssets,
+            loader: require.resolve('url-loader'),
             options: {
-              name: staticAssetName,
+              name: '[path][name].[ext]?[hash]',
+              limit: 10000,
             },
           },
         ],
@@ -426,7 +405,7 @@ const serverConfig = {
 
   externals: [
     nodeExternals({
-      whitelist: [reStyle, reImage, 'webpack/hot/poll?1000'],
+      whitelist: [reStyle, reAssets, 'webpack/hot/poll?1000'],
     }),
   ],
 
