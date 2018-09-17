@@ -498,6 +498,15 @@ module.exports = function createWebpackConfig({
 
     // The user can configure its own externals
     externals: project.externals,
+
+    // https://webpack.js.org/configuration/performance/#performance
+    performance: {
+      ...(isProduction
+        ? project.performanceBudget || { hints: false }
+        : {
+            hints: false,
+          }),
+    },
   };
 
   //
