@@ -149,78 +149,6 @@ module.exports = function createWebpackConfig({
           ],
         },
 
-        // Rules for Style Sheets
-        {
-          test: reStyle,
-          rules: [
-            {
-              loader: MiniCssExtractPlugin.loader,
-            },
-
-            // Process internal/project styles (from src folder)
-            {
-              oneOf: [
-                {
-                  test: /\.global\.[A-z]*$/,
-                  loader: require.resolve('css-loader'),
-                  options: {
-                    // CSS Loader https://github.com/webpack/css-loader
-                    importLoaders: 1,
-                    sourceMap: isDebug,
-                    // CSS Modules https://github.com/css-modules/css-modules
-                    modules: false,
-                    // CSS Nano http://cssnano.co/
-                    minimize: isDebug ? false : minimizeCssOptions,
-                  },
-                },
-                {
-                  loader: require.resolve('css-loader'),
-                  options: {
-                    // CSS Loader https://github.com/webpack/css-loader
-                    importLoaders: 1,
-                    sourceMap: isDebug,
-                    // CSS Modules https://github.com/css-modules/css-modules
-                    modules: true,
-                    localIdentName: isDebug
-                      ? '[name]-[local]-[hash:base64:5]'
-                      : '[hash:base64:5]',
-                    // CSS Nano http://cssnano.co/
-                    minimize: isDebug ? false : minimizeCssOptions,
-                  },
-                },
-              ],
-            },
-
-            // Apply PostCSS plugins including autoprefixer
-            {
-              loader: require.resolve('postcss-loader'),
-              options: {
-                // Necessary for external CSS imports to work
-                // https://github.com/facebookincubator/create-react-app/issues/2677
-                ident: 'postcss',
-                plugins: [require('autoprefixer')],
-                sourceMap: isDebug,
-              },
-            },
-
-            // Compile Less to CSS
-            // https://github.com/webpack-contrib/less-loader
-            // Install dependencies before uncommenting: yarn add --dev less-loader less
-            {
-              test: /\.less$/,
-              loader: require.resolve('less-loader'),
-            },
-
-            // Compile Sass to CSS
-            // https://github.com/webpack-contrib/sass-loader
-            // Install dependencies before uncommenting: yarn add --dev sass-loader node-sass
-            {
-              test: /\.(scss|sass)$/,
-              loader: require.resolve('sass-loader'),
-            },
-          ],
-        },
-
         // Rules for assets
         {
           oneOf: [
@@ -257,7 +185,7 @@ module.exports = function createWebpackConfig({
         // Rules for HTML
         {
           test: /\.html$/,
-          loader: 'html-loader',
+          loader: require.resolve('html-loader'),
         },
 
         // Rules for GraphQL
@@ -334,6 +262,86 @@ module.exports = function createWebpackConfig({
           ]),
     ],
 
+    module: {
+      ...config.module,
+
+      rules: [
+        ...config.module.rules,
+
+        // Rules for Style Sheets
+        {
+          test: reStyle,
+          rules: [
+            {
+              loader: MiniCssExtractPlugin.loader,
+            },
+
+            // Process internal/project styles (from src folder)
+            {
+              oneOf: [
+                {
+                  test: /\.global\.[A-z]*$/,
+                  loader: require.resolve('css-loader'),
+                  options: {
+                    // CSS Loader https://github.com/webpack/css-loader
+                    importLoaders: 1,
+                    sourceMap: isDebug,
+                    // CSS Modules https://github.com/css-modules/css-modules
+                    modules: false,
+                    // CSS Nano http://cssnano.co/
+                    minimize: isDebug ? false : minimizeCssOptions,
+                  },
+                },
+                {
+                  loader: require.resolve('css-loader'),
+                  options: {
+                    // CSS Loader https://github.com/webpack/css-loader
+                    importLoaders: 1,
+                    sourceMap: isDebug,
+                    // CSS Modules https://github.com/css-modules/css-modules
+                    modules: true,
+                    localIdentName: isDebug
+                      ? '[name]-[local]-[hash:base64:5]'
+                      : '[hash:base64:5]',
+                    // CSS Nano http://cssnano.co/
+                    minimize: isDebug ? false : minimizeCssOptions,
+                  },
+                },
+              ],
+            },
+
+            // Apply PostCSS plugins including autoprefixer
+            {
+              loader: require.resolve('postcss-loader'),
+              options: {
+                // Necessary for external CSS imports to work
+                // https://github.com/facebookincubator/create-react-app/issues/2677
+                ident: 'postcss',
+                plugins: [require('autoprefixer')],
+                sourceMap: isDebug,
+              },
+            },
+
+            // Compile Less to CSS
+            // https://github.com/webpack-contrib/less-loader
+            // Install dependencies before uncommenting: yarn add --dev less-loader less
+            {
+              test: /\.less$/,
+              loader: require.resolve('less-loader'),
+            },
+
+            // Compile Sass to CSS
+            // https://github.com/webpack-contrib/sass-loader
+            // Install dependencies before uncommenting: yarn add --dev sass-loader node-sass
+            {
+              test: /\.(scss|sass)$/,
+              loader: require.resolve('sass-loader'),
+            },
+          ],
+        },
+      ],
+    },
+
     // Some libraries import Node modules but don't use them in the browser.
     // Tell Webpack to provide empty mocks for them so importing them works.
     // https://webpack.js.org/configuration/node/
@@ -384,24 +392,61 @@ module.exports = function createWebpackConfig({
     module: {
       ...config.module,
 
-      rules: overrideRules(config.module.rules, rule => {
-        // Override paths to static assets
-        if (
-          rule.loader === require.resolve('file-loader') ||
-          rule.loader === require.resolve('url-loader') ||
-          rule.loader === require.resolve('svg-url-loader')
-        ) {
-          return {
-            ...rule,
-            options: {
-              ...rule.options,
-              emitFile: false,
-            },
-          };
-        }
+      rules: [
+        ...overrideRules(config.module.rules, rule => {
+          // Override paths to static assets
+          if (
+            rule.loader === require.resolve('file-loader') ||
+            rule.loader === require.resolve('url-loader')
+          ) {
+            return {
+              ...rule,
+              options: {
+                ...rule.options,
+                emitFile: false,
+              },
+            };
+          }
 
-        return rule;
-      }),
+          return rule;
+        }),
+
+        // Rules for Style Sheets
+        {
+          test: reStyle,
+          rules: [
+            // Process internal/project styles (from src folder)
+            {
+              loader: require.resolve('css-loader/locals'),
+              options: {
+                // CSS Loader https://github.com/webpack/css-loader
+                importLoaders: 1,
+                // CSS Modules https://github.com/css-modules/css-modules
+                modules: true,
+                localIdentName: isDebug
+                  ? '[name]-[local]-[hash:base64:5]'
+                  : '[hash:base64:5]',
+              },
+            },
+
+            // Compile Less to CSS
+            // https://github.com/webpack-contrib/less-loader
+            // Install dependencies before uncommenting: yarn add --dev less-loader less
+            {
+              test: /\.less$/,
+              loader: require.resolve('less-loader'),
+            },
+
+            // Compile Sass to CSS
+            // https://github.com/webpack-contrib/sass-loader
+            // Install dependencies before uncommenting: yarn add --dev sass-loader node-sass
+            {
+              test: /\.(scss|sass)$/,
+              loader: require.resolve('sass-loader'),
+            },
+          ],
+        },
+      ],
     },
 
     externals: [
