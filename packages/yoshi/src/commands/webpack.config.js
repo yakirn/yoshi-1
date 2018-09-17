@@ -10,7 +10,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const pkg = require(path.join(process.cwd(), './package.json'));
 
 const project = require('yoshi-config');
-const { unprocessedModules } = require('yoshi-helpers');
+const { unprocessedModules, toIdentifier } = require('yoshi-helpers');
 
 const ROOT_DIR = process.cwd();
 const resolvePath = (...args) => path.resolve(ROOT_DIR, ...args);
@@ -284,14 +284,30 @@ module.exports = function createWebpackConfig({
       ],
     },
 
+    output: {
+      ...config.output,
+
+      // This is changed to support running multiple webpack runtimes
+      // (from different compilation) on the same webpage.
+      jsonpFunction: `webpackJsonp_${toIdentifier(project.name)}`,
+
+      // Bundle as UMD format if the user configured that this is a library
+      ...(project.exports
+        ? {
+            library: project.exports,
+            libraryTarget: 'umd',
+            globalObject: "(typeof self !== 'undefined' ? self : this)",
+          }
+        : {}),
+    },
+
     plugins: [
       ...config.plugins,
 
       new MiniCssExtractPlugin({
         // Options similar to the same options in webpackOptions.output
         // both options are optional
-        filename: '[name].css',
-        chunkFilename: '[id].css',
+        filename: isDebug ? '[name].css' : '[name].min.css',
       }),
 
       // Define free variables
@@ -405,7 +421,11 @@ module.exports = function createWebpackConfig({
       fs: 'empty',
       net: 'empty',
       tls: 'empty',
+      __dirname: true,
     },
+
+    // The user can configure its own externals
+    externals: project.externals,
   };
 
   //
