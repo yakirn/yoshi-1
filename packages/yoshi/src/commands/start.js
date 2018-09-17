@@ -29,11 +29,11 @@ const {
   createCompiler,
   prepareUrls,
 } = require('react-dev-utils/WebpackDevServerUtils');
-const clearConsole = require('react-dev-utils/clearConsole');
+// const clearConsole = require('react-dev-utils/clearConsole');
 const openBrowser = require('react-dev-utils/openBrowser');
 const webpackConfig = require('./webpack.config');
 
-const isInteractive = process.stdout.isTTY;
+// const isInteractive = process.stdout.isTTY;
 
 // function format(time) {
 //   return time.toTimeString().replace(/.*(\d{2}:\d{2}:\d{2}).*/, '$1');
@@ -41,20 +41,21 @@ const isInteractive = process.stdout.isTTY;
 
 function createCompilationPromise(name, compiler, config) {
   return new Promise((resolve, reject) => {
-    let timeStart = new Date();
-    compiler.hooks.compile.tap(name, () => {
-      timeStart = new Date();
-      // console.info(`[${format(timeStart)}] Compiling '${name}'...`);
-    });
+    // let timeStart = new Date();
+    // compiler.hooks.compile.tap(name, () => {
+    // timeStart = new Date();
+    // console.info(`[${format(timeStart)}] Compiling '${name}'...`);
+    // });
 
     compiler.hooks.done.tap(name, stats => {
-      console.info(stats.toString(config.stats));
-      const timeEnd = new Date();
-      const time = timeEnd.getTime() - timeStart.getTime();
+      // console.info(stats.toString(config.stats));
+      // const timeEnd = new Date();
+      // const time = timeEnd.getTime() - timeStart.getTime();
       if (stats.hasErrors()) {
         // console.info(
         //   `[${format(timeEnd)}] Failed to compile '${name}' after ${time} ms`,
         // );
+        console.log(stats.toString('errors-only'));
         reject(new Error('Compilation failed!'));
       } else {
         // console.info(
@@ -179,7 +180,13 @@ module.exports = async () => {
     webpackDevServerConfig,
   );
 
-  serverCompiler.watch({ 'info-verbosity': 'none' }, (error, stats) => {});
+  let serverProcess;
+
+  serverCompiler.watch({ 'info-verbosity': 'none' }, (error, stats) => {
+    if (serverProcess && !error && !stats.hasErrors()) {
+      serverProcess.send({});
+    }
+  });
 
   await new Promise((resolve, reject) => {
     devServer.listen(3200, '0.0.0.0', err => (err ? reject(err) : resolve()));
@@ -188,26 +195,26 @@ module.exports = async () => {
   await clientPromise;
   await serverPromise;
 
-  const serverProcess = child_process.spawn('node', ['index.js'], {
-    stdio: 'pipe',
-  });
+  const startServerProcess = () => {
+    serverProcess = child_process.fork('index.js', {
+      stdio: 'pipe',
+    });
 
-  serverProcess.stdout.pipe(serverLogPrefixer()).pipe(process.stdout);
-  serverProcess.stderr.pipe(serverLogPrefixer()).pipe(process.stderr);
+    serverProcess.stdout.pipe(serverLogPrefixer()).pipe(process.stdout);
+    serverProcess.stderr.pipe(serverLogPrefixer()).pipe(process.stderr);
+
+    serverProcess.on('message', () => {
+      serverProcess.kill();
+      startServerProcess();
+    });
+  };
+
+  startServerProcess();
 
   await waitPort({
     port: 3000,
     output: 'silent',
   });
 
-  // if (isInteractive) {
-  //   clearConsole();
-  // }
-
-  // console.log(chalk.cyan('Starting the development server...\n'));
-
   openBrowser('http://localhost:3000');
-
-  // console.log(`Server launched!`);
-  // console.log();
 };

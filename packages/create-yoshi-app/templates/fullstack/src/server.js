@@ -6,38 +6,58 @@ let wrappedFunction;
 
 const makeHotExport = sourceModule => {
   if (sourceModule.hot) {
-    sourceModule.hot.accept();
-
-    sourceModule.hot.dispose(() => {
+    sourceModule.hot.accept(() => {
       setTimeout(() => {
-        router = wrappedFunction(Router(), context);
+        try {
+          router = wrappedFunction(Router(), context);
+        } catch (error) {
+        //   console.log(error);
+        }
       });
     });
+
+    if (sourceModule.hot.addStatusHandler) {
+      if (sourceModule.hot.status() === 'idle') {
+        sourceModule.hot.addStatusHandler(status => {
+          if (status === 'apply') {
+            setTimeout(() => {
+              // try {
+                router = wrappedFunction(Router(), context);
+              // } catch (error) {
+              //   console.log(error);
+              // }
+            });
+          }
+        })
+      }
+    }
+
+    // sourceModule.hot.dispose(() => {
+    //   setTimeout(() => {
+    //     // try {
+    //       router = wrappedFunction(Router(), context);
+    //     // } catch (error) {
+    //     //   console.log(error);
+    //     // }
+    //   });
+    // });
   }
 };
 
-export default (sourceModule) => {
-  if (!sourceModule || !sourceModule.id) {
-    throw new Error(
-      'Could not find the `id` property in the `module` you have provided',
-    );
-  }
-
+export default (sourceModule, _wrappedFunction) => {
   makeHotExport(sourceModule);
 
-  return _wrappedFunction => {
-    wrappedFunction = _wrappedFunction;
+  wrappedFunction = _wrappedFunction;
 
-    return (app, _context) => {
-      context = _context;
+  return (app, _context) => {
+    context = _context;
 
-      router = wrappedFunction(Router(), context);
+    router = wrappedFunction(Router(), context);
 
-      app.use((req, res) => {
-        router.handle(req, res);
-      });
+    app.use((req, res, next) => {
+      router.handle(req, res, next);
+    });
 
-      return app;
-    };
+    return app;
   };
 };

@@ -7,7 +7,7 @@ import hot from './server';
 //
 // `context` is an object with built-in services from `wix-bootstrap-ng`. See
 // https://github.com/wix-platform/wix-node-platform/tree/master/bootstrap/wix-bootstrap-ng).
-export default hot(module)((app, context) => {
+export default hot(module, (app, context) => {
   // We load the already parsed ERB configuration (located at /templates folder).
   const config = context.config.load('{%projectName%}');
 
@@ -25,7 +25,7 @@ export default hot(module)((app, context) => {
 
   // Define a route to render our initial HTML.
   app.get('/', (req, res) => {
-    // return res.send('hello world');
+    return res.send('hello world 1234');
 
     // Extract some data from every incoming request.
     const renderModel = getRenderModel(req);
