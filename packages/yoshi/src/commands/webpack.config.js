@@ -8,6 +8,7 @@ const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TpaStyleWebpackPlugin = require('tpa-style-webpack-plugin');
 const RtlCssPlugin = require('rtlcss-webpack-plugin');
+const DynamicPublicPath = require('../webpack-plugins/dynamic-public-path');
 const { localIdentName, staticsDomain } = require('../constants');
 // const overrideRules = require('./lib/overrideRules');
 const pkg = require(path.join(process.cwd(), './package.json'));
@@ -346,11 +347,20 @@ module.exports = function createWebpackConfig({
           ]
         : []),
 
+      // Hacky way of correcting Webpack's publicPath
+      new DynamicPublicPath(),
+
       // Define free variables
       // https://webpack.js.org/plugins/define-plugin/
       new webpack.DefinePlugin({
         'process.env.BROWSER': true,
         __DEV__: isDebug,
+        'process.env.NODE_ENV': JSON.stringify(
+          isProduction ? 'production' : 'development',
+        ),
+        'window.__CI_APP_VERSION__': JSON.stringify(
+          artifactVersion ? artifactVersion : '0.0.0',
+        ),
       }),
 
       // Moment.js is an extremely popular library that bundles large locale files
