@@ -9,6 +9,9 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 // const overrideRules = require('./lib/overrideRules');
 const pkg = require(path.join(process.cwd(), './package.json'));
 
+const project = require('yoshi-config');
+const { unprocessedModules } = require('yoshi-helpers');
+
 const ROOT_DIR = process.cwd();
 const resolvePath = (...args) => path.resolve(ROOT_DIR, ...args);
 const SRC_DIR = resolvePath('src');
@@ -17,6 +20,9 @@ const BUILD_DIR = resolvePath('build');
 const reScript = /\.(js|jsx|mjs)$/;
 const reStyle = /\.(css|less|styl|scss|sass|sss)$/;
 const reAssets = /\.(png|jpg|jpeg|gif|svg|woff|woff2|ttf|otf|eot|wav|mp3)$/;
+
+const disableTsThreadOptimization =
+  process.env.DISABLE_TS_THREAD_OPTIMIZATION === 'true';
 
 // CSS Nano options http://cssnano.co/
 const minimizeCssOptions = {
@@ -73,6 +79,19 @@ module.exports = function createWebpackConfig({
       // some tools, although we do not recommend using it, see:
       // https://github.com/facebookincubator/create-react-app/issues/290
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
+
+      // The user can configure its own aliases
+      alias: project.resolveAlias,
+
+      // Whether to resolve symlinks to their symlinked location.
+      symlinks: false,
+    },
+
+    // Since Yoshi doesn't depend on every loader it uses directly, we first look
+    // for loaders in Yoshi's `node_modules` and then look at the root `node_modules`.
+    // See https://github.com/wix/yoshi/pull/392.
+    resolveLoader: {
+      modules: [path.join(__dirname, '../node_modules'), 'node_modules'],
     },
 
     plugins: [
@@ -87,22 +106,49 @@ module.exports = function createWebpackConfig({
       strictExportPresence: true,
 
       rules: [
+        // Rules for optimizing Lodash
+        ...(project.features.externalizeRelativeLodash
+          ? [
+              {
+                test: /[\\/]node_modules[\\/]lodash/,
+                loader: require.resolve('externalize-relative-module-loader'),
+              },
+            ]
+          : []),
+
+        // Rules specific for Angular
+        ...(project.isAngularProject
+          ? [
+              {
+                test: [reScript, /\.(ts|tsx)$/],
+                loader: require.resolve('ng-annotate-loader'),
+                include: unprocessedModules,
+              },
+            ]
+          : []),
+
         // Rules for TS / TSX
         {
           test: /\.(ts|tsx)$/,
-          include: [SRC_DIR],
+          exclude: /(node_modules)/,
           use: [
-            {
-              loader: require.resolve('thread-loader'),
-              options: {
-                workers: require('os').cpus().length - 1,
-              },
-            },
+            ...(disableTsThreadOptimization
+              ? []
+              : [
+                  // This loader parallelizes code compilation, it is optional but
+                  // improves compile time on larger projects
+                  {
+                    loader: require.resolve('thread-loader'),
+                    options: {
+                      workers: require('os').cpus().length - 1,
+                    },
+                  },
+                ]),
             {
               loader: require.resolve('ts-loader'),
               options: {
                 // This implicitly sets `transpileOnly` to `true`
-                happyPackMode: true,
+                happyPackMode: !disableTsThreadOptimization,
                 compilerOptions: {
                   // force es modules for tree shaking
                   module: 'esnext',
@@ -121,7 +167,7 @@ module.exports = function createWebpackConfig({
         // Rules for JS / JSX
         {
           test: reScript,
-          include: [SRC_DIR],
+          include: unprocessedModules,
           use: [
             {
               loader: require.resolve('thread-loader'),
