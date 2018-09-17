@@ -46,7 +46,7 @@ module.exports = function createWebpackConfig({
   // -----------------------------------------------------------------------------
 
   const config = {
-    context: ROOT_DIR,
+    context: SRC_DIR,
 
     mode: isDebug ? 'development' : 'production',
 
@@ -225,7 +225,7 @@ module.exports = function createWebpackConfig({
     entry: {
       client: [
         // require.resolve('@babel/polyfill'),
-        './src/client.js',
+        './client.js',
       ],
     },
 
@@ -368,7 +368,7 @@ module.exports = function createWebpackConfig({
       server: [
         // require.resolve('@babel/polyfill'),
         'webpack/hot/poll?1000',
-        './src/real.js',
+        './real.js',
       ],
     },
 
