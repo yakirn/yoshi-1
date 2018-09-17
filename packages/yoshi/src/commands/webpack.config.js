@@ -44,7 +44,8 @@ const isProduction = checkIsProduction();
 
 const inTeamCity = checkInTeamCity();
 
-const separateCss = project.separateCss;
+const separateCss =
+  project.separateCss === 'prod' && (inTeamCity || isProduction);
 
 // Projects that uses `wnpm-ci` have their package.json version field on a fixed version which is not their real version
 // These projects determine their version on the "release" step, which means they will have a wrong public path
