@@ -6,6 +6,8 @@ const nodeExternals = require('webpack-node-externals');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const TpaStyleWebpackPlugin = require('tpa-style-webpack-plugin');
+const RtlCssPlugin = require('rtlcss-webpack-plugin');
 // const overrideRules = require('./lib/overrideRules');
 const pkg = require(path.join(process.cwd(), './package.json'));
 
@@ -314,11 +316,14 @@ module.exports = function createWebpackConfig({
 
       ...(separateCss
         ? [
+            // https://github.com/webpack-contrib/mini-css-extract-plugin
             new MiniCssExtractPlugin({
-              // Options similar to the same options in webpackOptions.output
-              // both options are optional
               filename: isDebug ? '[name].css' : '[name].min.css',
             }),
+            // https://github.com/wix-incubator/tpa-style-webpack-plugin
+            ...(project.enhancedTpaStyle ? [new TpaStyleWebpackPlugin()] : []),
+            // https://github.com/wix/rtlcss-webpack-plugin
+            new RtlCssPlugin(isDebug ? '[name].rtl.css' : '[name].rtl.min.css'),
           ]
         : []),
 
@@ -402,7 +407,7 @@ module.exports = function createWebpackConfig({
                     importLoaders: 1,
                     sourceMap: isDebug,
                     // CSS Modules https://github.com/css-modules/css-modules
-                    modules: true,
+                    modules: project.cssModules,
                     localIdentName: isDebug
                       ? '[name]-[local]-[hash:base64:5]'
                       : '[hash:base64:5]',
