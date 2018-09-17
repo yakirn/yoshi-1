@@ -8,6 +8,7 @@ const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TpaStyleWebpackPlugin = require('tpa-style-webpack-plugin');
 const RtlCssPlugin = require('rtlcss-webpack-plugin');
+const { localIdentName } = require('../constants');
 // const overrideRules = require('./lib/overrideRules');
 const pkg = require(path.join(process.cwd(), './package.json'));
 
@@ -401,16 +402,21 @@ module.exports = function createWebpackConfig({
                   },
                 },
                 {
+                  // CSS Loader https://github.com/webpack/css-loader
                   loader: require.resolve('css-loader'),
                   options: {
-                    // CSS Loader https://github.com/webpack/css-loader
-                    importLoaders: 1,
-                    sourceMap: isDebug,
+                    camelCase: true,
+                    sourceMap: !!separateCss,
+                    localIdentName: isDebug
+                      ? localIdentName.long
+                      : localIdentName.short,
+                    // Make sure every package has unique class names
+                    hashPrefix: project.name,
                     // CSS Modules https://github.com/css-modules/css-modules
                     modules: project.cssModules,
-                    localIdentName: isDebug
-                      ? '[name]-[local]-[hash:base64:5]'
-                      : '[hash:base64:5]',
+                    // PostCSS, sass-loader and resolve-url-loader, so composition
+                    // will work with import
+                    importLoaders: 3 + Number(project.tpaStyle),
                     // CSS Nano http://cssnano.co/
                     minimize: isDebug ? false : minimizeCssOptions,
                   },
@@ -436,6 +442,10 @@ module.exports = function createWebpackConfig({
             {
               test: /\.less$/,
               loader: require.resolve('less-loader'),
+              options: {
+                sourceMap: true,
+                paths: ['.', 'node_modules'],
+              },
             },
 
             // Compile Sass to CSS
@@ -444,6 +454,13 @@ module.exports = function createWebpackConfig({
             {
               test: /\.(scss|sass)$/,
               loader: require.resolve('sass-loader'),
+              options: {
+                sourceMap: true,
+                includePaths: [
+                  'node_modules',
+                  'node_modules/compass-mixins/lib',
+                ],
+              },
             },
           ],
         },
@@ -531,13 +548,14 @@ module.exports = function createWebpackConfig({
             {
               loader: require.resolve('css-loader/locals'),
               options: {
-                // CSS Loader https://github.com/webpack/css-loader
-                importLoaders: 1,
-                // CSS Modules https://github.com/css-modules/css-modules
-                modules: true,
+                camelCase: true,
                 localIdentName: isDebug
-                  ? '[name]-[local]-[hash:base64:5]'
-                  : '[hash:base64:5]',
+                  ? localIdentName.long
+                  : localIdentName.short,
+                // Make sure every package has unique class names
+                hashPrefix: project.name,
+                // CSS Modules https://github.com/css-modules/css-modules
+                modules: project.cssModules,
               },
             },
 
@@ -547,6 +565,9 @@ module.exports = function createWebpackConfig({
             {
               test: /\.less$/,
               loader: require.resolve('less-loader'),
+              options: {
+                paths: ['.', 'node_modules'],
+              },
             },
 
             // Compile Sass to CSS
@@ -555,6 +576,12 @@ module.exports = function createWebpackConfig({
             {
               test: /\.(scss|sass)$/,
               loader: require.resolve('sass-loader'),
+              options: {
+                includePaths: [
+                  'node_modules',
+                  'node_modules/compass-mixins/lib',
+                ],
+              },
             },
           ],
         },
