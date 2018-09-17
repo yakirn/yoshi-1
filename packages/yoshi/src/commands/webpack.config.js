@@ -10,7 +10,11 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const pkg = require(path.join(process.cwd(), './package.json'));
 
 const project = require('yoshi-config');
-const { unprocessedModules, toIdentifier } = require('yoshi-helpers');
+const {
+  unprocessedModules,
+  toIdentifier,
+  isProduction: checkIsProduction,
+} = require('yoshi-helpers');
 
 const ROOT_DIR = process.cwd();
 const resolvePath = (...args) => path.resolve(ROOT_DIR, ...args);
@@ -23,6 +27,10 @@ const reAssets = /\.(png|jpg|jpeg|gif|svg|woff|woff2|ttf|otf|eot|wav|mp3)$/;
 
 const disableTsThreadOptimization =
   process.env.DISABLE_TS_THREAD_OPTIMIZATION === 'true';
+
+const isProduction = checkIsProduction();
+
+const separateCss = project.separateCss;
 
 // CSS Nano options http://cssnano.co/
 const minimizeCssOptions = {
@@ -304,11 +312,15 @@ module.exports = function createWebpackConfig({
     plugins: [
       ...config.plugins,
 
-      new MiniCssExtractPlugin({
-        // Options similar to the same options in webpackOptions.output
-        // both options are optional
-        filename: isDebug ? '[name].css' : '[name].min.css',
-      }),
+      ...(separateCss
+        ? [
+            new MiniCssExtractPlugin({
+              // Options similar to the same options in webpackOptions.output
+              // both options are optional
+              filename: isDebug ? '[name].css' : '[name].min.css',
+            }),
+          ]
+        : []),
 
       // Define free variables
       // https://webpack.js.org/plugins/define-plugin/
@@ -343,9 +355,23 @@ module.exports = function createWebpackConfig({
         {
           test: reStyle,
           rules: [
-            {
-              loader: MiniCssExtractPlugin.loader,
-            },
+            // Process every style asset with either `style-loader`
+            // or `mini-css-extract-plugin`
+            ...(separateCss
+              ? [
+                  {
+                    loader: MiniCssExtractPlugin.loader,
+                  },
+                ]
+              : [
+                  {
+                    loader: require.resolve('style-loader'),
+                    options: {
+                      // Reuses a single `<style></style>` element
+                      singleton: true,
+                    },
+                  },
+                ]),
 
             // Process internal/project styles (from src folder)
             {
@@ -356,7 +382,7 @@ module.exports = function createWebpackConfig({
                   options: {
                     // CSS Loader https://github.com/webpack/css-loader
                     importLoaders: 1,
-                    sourceMap: isDebug,
+                    sourceMap: separateCss,
                     // CSS Modules https://github.com/css-modules/css-modules
                     modules: false,
                     // CSS Nano http://cssnano.co/
