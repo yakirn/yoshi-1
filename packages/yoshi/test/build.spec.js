@@ -698,6 +698,11 @@ describe('Aggregator: Build', () => {
       expect(test.content('dist/src/something.js')).to.contain($inject);
       expect(test.content('something.js')).not.to.contain($inject);
     });
+
+    it('should generate source maps', () => {
+      expect(test.list('dist/statics')).to.contain('app.bundle.min.js.map');
+      expect(test.list('dist/statics')).to.contain('app.bundle.js.map');
+    });
   });
 
   describe('simple project with typescript and angular that runs on CI (Teamcity) and with 1 entry point w/o extension', () => {
@@ -818,7 +823,6 @@ describe('Aggregator: Build', () => {
           'src/client.js': '',
           'package.json': fx.packageJson(),
         })
-        .verbose()
         .spawn('build', ['--analyze']);
     });
 
@@ -832,6 +836,36 @@ describe('Aggregator: Build', () => {
       return checkServerIsServing({ port: analyzerServerPort }).then(
         expect(test.list('target')).to.contain('webpack-stats.min.json'),
       );
+    });
+  });
+
+  describe('build on local machine', () => {
+    it('should not generate source maps if not requested', () => {
+      test = tp.create();
+      test
+        .setup({
+          'src/client.js': 'const aVarialbe = 3',
+          'package.json': fx.packageJson(),
+        })
+        .execute('build', []);
+
+      expect(test.list('dist/statics')).not.to.contain('app.bundle.min.js.map');
+      expect(test.list('dist/statics')).not.to.contain('app.bundle.js.map');
+    });
+  });
+
+  describe('build project with --source-map flag', () => {
+    it('should generate source maps', () => {
+      test = tp.create();
+      test
+        .setup({
+          'src/client.js': 'const aVarialbe = 3',
+          'package.json': fx.packageJson(),
+        })
+        .execute('build', ['--source-map']);
+
+      expect(test.list('dist/statics')).to.contain('app.bundle.min.js.map');
+      expect(test.list('dist/statics')).to.contain('app.bundle.js.map');
     });
   });
 
