@@ -179,7 +179,7 @@ const config = ({
       inTeamCity() || sourceMap
         ? 'source-map'
         : !isProduction()
-          ? 'cheap-module-source-map'
+          ? 'cheap-module-eval-source-map'
           : false,
 
     performance: {

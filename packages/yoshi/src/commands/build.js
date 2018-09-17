@@ -95,7 +95,7 @@ module.exports = runner.command(
             ...defaultOptions,
             callbackPath: productionCallbackPath,
             configParams: {
-              min: true,
+              min: cliArgs.min !== false,
               production: true,
               analyze: cliArgs.analyze,
               sourceMap: cliArgs['source-map'],
