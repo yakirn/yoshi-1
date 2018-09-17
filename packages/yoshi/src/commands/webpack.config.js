@@ -84,11 +84,19 @@ const config = {
     rules: [
       {
         test: /\.(ts|tsx)$/,
-        exclude: /(node_modules)/,
+        include: [SRC_DIR],
         use: [
           {
-            loader: 'ts-loader',
+            loader: require.resolve('thread-loader'),
             options: {
+              workers: require('os').cpus().length - 1,
+            },
+          },
+          {
+            loader: require.resolve('ts-loader'),
+            options: {
+              // This implicitly sets `transpileOnly` to `true`
+              happyPackMode: true,
               compilerOptions: {
                 // force es modules for tree shaking
                 module: 'esnext',
@@ -108,118 +116,110 @@ const config = {
       {
         test: reScript,
         include: [SRC_DIR],
-        loader: 'babel-loader',
-        options: {
-          // https://github.com/babel/babel-loader#options
-          cacheDirectory: isDebug,
+        use: [
+          {
+            loader: require.resolve('thread-loader'),
+            options: {
+              workers: require('os').cpus().length - 1,
+            },
+          },
+          {
+            loader: require.resolve('babel-loader'),
+            options: {
+              // https://github.com/babel/babel-loader#options
+              cacheDirectory: isDebug,
 
-          // https://babeljs.io/docs/usage/options/
-          babelrc: false,
-          presets: [
-            // A Babel preset that can automatically determine the Babel plugins and polyfills
-            // https://github.com/babel/babel-preset-env
-            [
-              require.resolve('babel-preset-yoshi'),
-              {
-                targets: {
-                  browsers: pkg.browserslist,
-                },
-                forceAllTransforms: !isDebug, // for UglifyJS
-                modules: false,
-                useBuiltIns: false,
-                debug: false,
-              },
-            ],
-            // // Experimental ECMAScript proposals
-            // // https://babeljs.io/docs/plugins/#presets-stage-x-experimental-presets-
-            // ['@babel/preset-stage-2', { decoratorsLegacy: true }],
-            // // Flow
-            // // https://github.com/babel/babel/tree/master/packages/babel-preset-flow
-            // '@babel/preset-flow',
-            // // JSX
-            // // https://github.com/babel/babel/tree/master/packages/babel-preset-react
-            // ['@babel/preset-react', { development: isDebug }],
-          ],
-          plugins: [
-            // Treat React JSX elements as value types and hoist them to the highest scope
-            // https://github.com/babel/babel/tree/master/packages/babel-plugin-transform-react-constant-elements
-            ...(isDebug ? [] : ['@babel/transform-react-constant-elements']),
-            // Replaces the React.createElement function with one that is more optimized for production
-            // https://github.com/babel/babel/tree/master/packages/babel-plugin-transform-react-inline-elements
-            ...(isDebug ? [] : ['@babel/transform-react-inline-elements']),
-            // Remove unnecessary React propTypes from the production build
-            // https://github.com/oliviertassinari/babel-plugin-transform-react-remove-prop-types
-            ...(isDebug ? [] : ['transform-react-remove-prop-types']),
-          ],
-        },
+              // https://babeljs.io/docs/usage/options/
+              babelrc: false,
+              presets: [
+                // A Babel preset that can automatically determine the Babel plugins and polyfills
+                // https://github.com/babel/babel-preset-env
+                [
+                  require.resolve('babel-preset-yoshi'),
+                  {
+                    targets: {
+                      browsers: pkg.browserslist,
+                    },
+                    forceAllTransforms: !isDebug, // for UglifyJS
+                    modules: false,
+                    useBuiltIns: false,
+                    debug: false,
+                  },
+                ],
+              ],
+            },
+          },
+        ],
       },
 
       // Rules for Style Sheets
       {
         test: reStyle,
         rules: [
-          // Convert CSS into JS module
-          // {
-          //   issuer: { not: [reStyle] },
-          //   use: require.resolve('isomorphic-style-loader'),
-          // },
-
           {
             loader: MiniCssExtractPlugin.loader,
           },
 
-          // Process external/third-party styles
-          {
-            exclude: SRC_DIR,
-            loader: 'css-loader',
-            options: {
-              sourceMap: isDebug,
-              minimize: isDebug ? false : minimizeCssOptions,
-            },
-          },
-
           // Process internal/project styles (from src folder)
           {
-            include: SRC_DIR,
-            loader: 'css-loader',
-            options: {
-              // CSS Loader https://github.com/webpack/css-loader
-              importLoaders: 1,
-              sourceMap: isDebug,
-              // CSS Modules https://github.com/css-modules/css-modules
-              modules: true,
-              localIdentName: isDebug
-                ? '[name]-[local]-[hash:base64:5]'
-                : '[hash:base64:5]',
-              // CSS Nano http://cssnano.co/
-              minimize: isDebug ? false : minimizeCssOptions,
-            },
+            oneOf: [
+              {
+                test: /\.global\.[A-z]*$/,
+                loader: require.resolve('css-loader'),
+                options: {
+                  // CSS Loader https://github.com/webpack/css-loader
+                  importLoaders: 1,
+                  sourceMap: isDebug,
+                  // CSS Modules https://github.com/css-modules/css-modules
+                  modules: false,
+                  // CSS Nano http://cssnano.co/
+                  minimize: isDebug ? false : minimizeCssOptions,
+                },
+              },
+              {
+                loader: require.resolve('css-loader'),
+                options: {
+                  // CSS Loader https://github.com/webpack/css-loader
+                  importLoaders: 1,
+                  sourceMap: isDebug,
+                  // CSS Modules https://github.com/css-modules/css-modules
+                  modules: true,
+                  localIdentName: isDebug
+                    ? '[name]-[local]-[hash:base64:5]'
+                    : '[hash:base64:5]',
+                  // CSS Nano http://cssnano.co/
+                  minimize: isDebug ? false : minimizeCssOptions,
+                },
+              },
+            ],
           },
 
           // Apply PostCSS plugins including autoprefixer
-          // {
-          //   loader: 'postcss-loader',
-          //   options: {
-          //     config: {
-          //       path: './tools/postcss.config.js',
-          //     },
-          //   },
-          // },
+          {
+            loader: require.resolve('postcss-loader'),
+            options: {
+              // Necessary for external CSS imports to work
+              // https://github.com/facebookincubator/create-react-app/issues/2677
+              ident: 'postcss',
+              plugins: [require('autoprefixer')],
+              sourceMap: isDebug,
+            },
+          },
 
           // Compile Less to CSS
           // https://github.com/webpack-contrib/less-loader
           // Install dependencies before uncommenting: yarn add --dev less-loader less
-          // {
-          //   test: /\.less$/,
-          //   loader: 'less-loader',
-          // },
+          {
+            test: /\.less$/,
+            loader: require.resolve('less-loader'),
+          },
 
           // Compile Sass to CSS
           // https://github.com/webpack-contrib/sass-loader
           // Install dependencies before uncommenting: yarn add --dev sass-loader node-sass
           {
             test: /\.(scss|sass)$/,
-            loader: 'sass-loader',
+            loader: require.resolve('sass-loader'),
           },
         ],
       },
@@ -235,7 +235,7 @@ const config = {
               // Inline lightweight SVGs as UTF-8 encoded DataUrl string
               {
                 test: /\.svg$/,
-                loader: 'svg-url-loader',
+                loader: require.resolve('svg-url-loader'),
                 options: {
                   name: staticAssetName,
                   limit: 4096, // 4kb
@@ -244,7 +244,7 @@ const config = {
 
               // Inline lightweight images as Base64 encoded DataUrl string
               {
-                loader: 'url-loader',
+                loader: require.resolve('url-loader'),
                 options: {
                   name: staticAssetName,
                   limit: 4096, // 4kb
@@ -255,7 +255,7 @@ const config = {
 
           // Or return public URL to image resource
           {
-            loader: 'file-loader',
+            loader: require.resolve('file-loader'),
             options: {
               name: staticAssetName,
             },
@@ -325,43 +325,12 @@ const clientConfig = {
       __DEV__: isDebug,
     }),
 
-    // Emit a file with assets paths
-    // https://github.com/webdeveric/webpack-assets-manifest#options
-    // new WebpackAssetsManifest({
-    //   output: `${BUILD_DIR}/asset-manifest.json`,
-    //   publicPath: true,
-    //   writeToDisk: true,
-    //   customize: ({ key, value }) => {
-    //     // You can prevent adding items to the manifest by returning false.
-    //     if (key.toLowerCase().endsWith('.map')) return false;
-    //     return { key, value };
-    //   },
-    //   done: (manifest, stats) => {
-    //     // Write chunk-manifest.json.json
-    //     const chunkFileName = `${BUILD_DIR}/chunk-manifest.json`;
-    //     try {
-    //       const fileFilter = file => !file.endsWith('.map');
-    //       const addPath = file => manifest.getPublicPath(file);
-    //       const chunkFiles = stats.compilation.chunkGroups.reduce((acc, c) => {
-    //         acc[c.name] = [
-    //           ...(acc[c.name] || []),
-    //           ...c.chunks.reduce(
-    //             (files, cc) => [
-    //               ...files,
-    //               ...cc.files.filter(fileFilter).map(addPath),
-    //             ],
-    //             [],
-    //           ),
-    //         ];
-    //         return acc;
-    //       }, Object.create(null));
-    //       fs.writeFileSync(chunkFileName, JSON.stringify(chunkFiles, null, 2));
-    //     } catch (err) {
-    //       console.error(`ERROR: Cannot write ${chunkFileName}: `, err);
-    //       if (!isDebug) process.exit(1);
-    //     }
-    //   },
-    // }),
+    // Moment.js is an extremely popular library that bundles large locale files
+    // by default due to how Webpack interprets its code. This is a practical
+    // solution that requires the user to opt into importing specific locales.
+    // https://github.com/jmblog/how-to-optimize-momentjs-with-webpack
+    // You can remove this if you don't use Moment.js:
+    new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
 
     ...(isDebug
       ? []
@@ -371,19 +340,6 @@ const clientConfig = {
           ...(isAnalyze ? [new BundleAnalyzerPlugin()] : []),
         ]),
   ],
-
-  // Move modules that occur in multiple entry chunks to a new entry chunk (the commons chunk).
-  // optimization: {
-  //   splitChunks: {
-  //     cacheGroups: {
-  //       commons: {
-  //         chunks: 'initial',
-  //         test: /[\\/]node_modules[\\/]/,
-  //         name: 'vendors',
-  //       },
-  //     },
-  //   },
-  // },
 
   // Some libraries import Node modules but don't use them in the browser.
   // Tell Webpack to provide empty mocks for them so importing them works.
@@ -435,37 +391,11 @@ const serverConfig = {
     ...config.module,
 
     rules: overrideRules(config.module.rules, rule => {
-      // Override babel-preset-env configuration for Node.js
-      if (rule.loader === 'babel-loader') {
-        return {
-          ...rule,
-          options: {
-            ...rule.options,
-            presets: rule.options.presets.map(
-              preset =>
-                preset[0] !== '@babel/preset-env'
-                  ? preset
-                  : [
-                      '@babel/preset-env',
-                      {
-                        targets: {
-                          node: pkg.engines.node.match(/(\d+\.?)+/)[0],
-                        },
-                        modules: false,
-                        useBuiltIns: false,
-                        debug: false,
-                      },
-                    ],
-            ),
-          },
-        };
-      }
-
       // Override paths to static assets
       if (
-        rule.loader === 'file-loader' ||
-        rule.loader === 'url-loader' ||
-        rule.loader === 'svg-url-loader'
+        rule.loader === require.resolve('file-loader') ||
+        rule.loader === require.resolve('url-loader') ||
+        rule.loader === require.resolve('svg-url-loader')
       ) {
         return {
           ...rule,
@@ -481,8 +411,6 @@ const serverConfig = {
   },
 
   externals: [
-    // './chunk-manifest.json',
-    // './asset-manifest.json',
     nodeExternals({
       whitelist: [reStyle, reImage, 'webpack/hot/poll?1000'],
     }),
