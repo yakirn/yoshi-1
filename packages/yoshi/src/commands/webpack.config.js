@@ -2,10 +2,12 @@
 const path = require('path');
 const webpack = require('webpack');
 // const WebpackAssetsManifest = require('webpack-assets-manifest');
+const { isObject } = require('lodash');
 const nodeExternals = require('webpack-node-externals');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 const TpaStyleWebpackPlugin = require('tpa-style-webpack-plugin');
 const RtlCssPlugin = require('rtlcss-webpack-plugin');
 const DynamicPublicPath = require('../webpack-plugins/dynamic-public-path');
@@ -36,6 +38,8 @@ const reAssets = /\.(png|jpg|jpeg|gif|svg|woff|woff2|ttf|otf|eot|wav|mp3)$/;
 const disableTsThreadOptimization =
   process.env.DISABLE_TS_THREAD_OPTIMIZATION === 'true';
 
+const disableModuleConcat = process.env.DISABLE_MODULE_CONCATENATION === 'true';
+
 const isProduction = checkIsProduction();
 
 const inTeamCity = checkInTeamCity();
@@ -57,6 +61,18 @@ const publicPath =
 const minimizeCssOptions = {
   discardComments: { removeAll: true },
 };
+
+const defaultSplitChunksConfig = {
+  chunks: 'all',
+  name: 'commons',
+  minChunks: 2,
+};
+
+const useSplitChunks = project.splitChunks;
+
+const splitChunksConfig = isObject(useSplitChunks)
+  ? useSplitChunks
+  : defaultSplitChunksConfig;
 
 function overrideRules(rules, patch) {
   return rules.map(ruleToPatch => {
@@ -83,7 +99,7 @@ module.exports = function createWebpackConfig({
   const config = {
     context: SRC_DIR,
 
-    mode: isDebug ? 'development' : 'production',
+    mode: isProduction ? 'development' : 'production',
 
     output: {
       path: resolvePath(BUILD_DIR, 'public/assets'),
@@ -308,6 +324,29 @@ module.exports = function createWebpackConfig({
       client: [
         // require.resolve('@babel/polyfill'),
         './client.js',
+      ],
+    },
+
+    optimization: {
+      minimize: !isDebug,
+      splitChunks: useSplitChunks ? splitChunksConfig : false,
+      concatenateModules: isProduction && !disableModuleConcat,
+      minimizer: [
+        new UglifyJsPlugin({
+          // Use multi-process parallel running to improve the build speed
+          // Default number of concurrent runs: os.cpus().length - 1
+          parallel: true,
+          // Enable file caching
+          cache: true,
+          sourceMap: true,
+          uglifyOptions: {
+            output: {
+              // support emojis
+              ascii_only: true,
+            },
+            keep_fnames: project.keepFunctionNames,
+          },
+        }),
       ],
     },
 
