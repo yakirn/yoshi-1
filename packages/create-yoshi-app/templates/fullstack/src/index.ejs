@@ -15,6 +15,6 @@
       window.__LOCALE__ = '<%= language %>';
       window.__STATICS_BASE_URL__ = '<%= baseStaticsUrl %>';
     </script>
-    <script src="<%= baseStaticsUrl %>client<% if (!debug) { %>.min<% } %>.js"></script>
+    <script src="<%= baseStaticsUrl %>client.bundle<% if (!debug) { %>.min<% } %>.js"></script>
   </body>
 </html>

@@ -8,7 +8,7 @@ const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TpaStyleWebpackPlugin = require('tpa-style-webpack-plugin');
 const RtlCssPlugin = require('rtlcss-webpack-plugin');
-const { localIdentName } = require('../constants');
+const { localIdentName, staticsDomain } = require('../constants');
 // const overrideRules = require('./lib/overrideRules');
 const pkg = require(path.join(process.cwd(), './package.json'));
 
@@ -17,12 +17,16 @@ const {
   unprocessedModules,
   toIdentifier,
   isProduction: checkIsProduction,
+  inTeamCity: checkInTeamCity,
 } = require('yoshi-helpers');
 
 const ROOT_DIR = process.cwd();
 const resolvePath = (...args) => path.resolve(ROOT_DIR, ...args);
 const SRC_DIR = resolvePath('src');
 const BUILD_DIR = resolvePath('build');
+
+const artifactName = process.env.ARTIFACT_ID;
+const artifactVersion = process.env.ARTIFACT_VERSION;
 
 const reScript = /\.(js|jsx|mjs)$/;
 const reStyle = /\.(css|less|styl|scss|sass|sss)$/;
@@ -33,7 +37,20 @@ const disableTsThreadOptimization =
 
 const isProduction = checkIsProduction();
 
+const inTeamCity = checkInTeamCity();
+
 const separateCss = project.separateCss;
+
+// Projects that uses `wnpm-ci` have their package.json version field on a fixed version which is not their real version
+// These projects determine their version on the "release" step, which means they will have a wrong public path
+// We currently can't support static public path of packages that deploy to unpkg
+const publicPath =
+  artifactName && artifactVersion
+    ? `${staticsDomain}/${artifactName}/${artifactVersion.replace(
+        '-SNAPSHOT',
+        '',
+      )}/`
+    : '/';
 
 // CSS Nano options http://cssnano.co/
 const minimizeCssOptions = {
@@ -69,12 +86,10 @@ module.exports = function createWebpackConfig({
 
     output: {
       path: resolvePath(BUILD_DIR, 'public/assets'),
-      publicPath: 'http://localhost:3200/',
+      publicPath,
       pathinfo: isDebug,
-      filename: isDebug ? '[name].js' : '[name].[chunkhash:8].js',
-      chunkFilename: isDebug
-        ? '[name].chunk.js'
-        : '[name].[chunkhash:8].chunk.js',
+      filename: isDebug ? '[name].bundle.js' : '[name].bundle.min.js',
+      chunkFilename: isDebug ? '[name].chunk.js' : '[name].chunk.min.js',
       // Point sourcemap entries to original disk location (format as URL on Windows)
       devtoolModuleFilenameTemplate: info =>
         path.resolve(info.absoluteResourcePath).replace(/\\/g, '/'),
@@ -310,6 +325,9 @@ module.exports = function createWebpackConfig({
             globalObject: "(typeof self !== 'undefined' ? self : this)",
           }
         : {}),
+
+      // https://webpack.js.org/configuration/output/#output-umdnameddefine
+      umdNamedDefine: project.umdNamedDefine,
     },
 
     plugins: [
