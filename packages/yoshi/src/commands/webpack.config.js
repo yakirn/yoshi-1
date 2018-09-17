@@ -307,8 +307,6 @@ module.exports = function createWebpackConfig({
     // Don't attempt to continue if there are any errors.
     bail: !isDebug,
 
-    cache: isDebug,
-
     // Specify what bundle information gets displayed
     // https://webpack.js.org/configuration/stats/
     stats: 'none',
