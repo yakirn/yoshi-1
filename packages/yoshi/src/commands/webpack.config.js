@@ -45,7 +45,9 @@ const isProduction = checkIsProduction();
 const inTeamCity = checkInTeamCity();
 
 const separateCss =
-  project.separateCss === 'prod' && (inTeamCity || isProduction);
+  project.separateCss === 'prod'
+    ? inTeamCity || isProduction
+    : project.separateCss;
 
 // Projects that uses `wnpm-ci` have their package.json version field on a fixed version which is not their real version
 // These projects determine their version on the "release" step, which means they will have a wrong public path
@@ -374,6 +376,11 @@ module.exports = function createWebpackConfig({
     plugins: [
       ...config.plugins,
 
+      // https://webpack.js.org/plugins/loader-options-plugin
+      new webpack.LoaderOptionsPlugin({
+        minimize: !isDebug,
+      }),
+
       ...(separateCss
         ? [
             // https://github.com/webpack-contrib/mini-css-extract-plugin
@@ -689,6 +696,12 @@ module.exports = function createWebpackConfig({
         entryOnly: false,
       }),
     ],
+
+    // https://webpack.js.org/configuration/optimization
+    optimization: {
+      // Do not modify/set the value of `process.env.NODE_ENV`
+      nodeEnv: false,
+    },
 
     // Do not replace node globals with polyfills
     // https://webpack.js.org/configuration/node/
