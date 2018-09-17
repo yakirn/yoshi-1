@@ -355,6 +355,12 @@ module.exports = function createWebpackConfig({
         {
           test: reStyle,
           rules: [
+            // Process style assets with `css-hot-loader` if HMR
+            // is `true` or `auto`
+            ...(project.hmr
+              ? [{ loader: require.resolve('css-hot-loader') }]
+              : []),
+
             // Process every style asset with either `style-loader`
             // or `mini-css-extract-plugin`
             ...(separateCss
