@@ -82,6 +82,7 @@ const config = {
     strictExportPresence: true,
 
     rules: [
+      // Rules for TS / TSX
       {
         test: /\.(ts|tsx)$/,
         include: [SRC_DIR],
@@ -262,6 +263,31 @@ const config = {
           },
         ],
       },
+
+      // Rules for Markdown
+      {
+        test: /\.md$/,
+        loader: require.resolve('raw-loader'),
+      },
+
+      // Rules for HAML
+      {
+        test: /\.haml$/,
+        loader: require.resolve('ruby-haml-loader'),
+      },
+
+      // Rules for HTML
+      {
+        test: /\.html$/,
+        loader: 'html-loader',
+      },
+
+      // Rules for GraphQL
+      {
+        test: /\.(graphql|gql)$/,
+        include: [SRC_DIR],
+        loader: require.resolve('graphql-tag/loader'),
+      },
     ],
   },
 
@@ -273,18 +299,6 @@ const config = {
   // Specify what bundle information gets displayed
   // https://webpack.js.org/configuration/stats/
   stats: 'none',
-  // {
-  //   cached: isVerbose,
-  //   cachedAssets: isVerbose,
-  //   chunks: isVerbose,
-  //   chunkModules: isVerbose,
-  //   colors: true,
-  //   hash: isVerbose,
-  //   modules: isVerbose,
-  //   reasons: isDebug,
-  //   timings: true,
-  //   version: isVerbose,
-  // },
 
   // Choose a developer tool to enhance debugging
   // https://webpack.js.org/configuration/devtool/#devtool
