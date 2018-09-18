@@ -1,7 +1,5 @@
-// const fs = require('fs');
 const path = require('path');
 const webpack = require('webpack');
-// const WebpackAssetsManifest = require('webpack-assets-manifest');
 const { isObject } = require('lodash');
 const nodeExternals = require('webpack-node-externals');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
@@ -13,7 +11,7 @@ const TpaStyleWebpackPlugin = require('tpa-style-webpack-plugin');
 const RtlCssPlugin = require('rtlcss-webpack-plugin');
 const DynamicPublicPath = require('../webpack-plugins/dynamic-public-path');
 const { localIdentName, staticsDomain } = require('../constants');
-// const overrideRules = require('./lib/overrideRules');
+
 const pkg = require(path.join(process.cwd(), './package.json'));
 
 const project = require('yoshi-config');
