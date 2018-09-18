@@ -657,6 +657,11 @@ module.exports = function createWebpackConfig({
               },
             },
 
+            // https://github.com/wix/wix-tpa-style-loader
+            ...(project.tpaStyle
+              ? [{ loader: require.resolve('wix-tpa-style-loader') }]
+              : []),
+
             // Compile Less to CSS
             // https://github.com/webpack-contrib/less-loader
             // Install dependencies before uncommenting: yarn add --dev less-loader less
