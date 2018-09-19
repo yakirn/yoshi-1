@@ -592,7 +592,7 @@ module.exports = function createWebpackConfig({
     entry: {
       server: [
         // require.resolve('@babel/polyfill'),
-        'webpack/hot/poll?1000',
+        require.resolve('./hot'),
         './real.js',
       ],
     },
