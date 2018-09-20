@@ -62,11 +62,6 @@ const publicPath =
 
 const stylableSeparateCss = project.enhancedTpaStyle;
 
-// CSS Nano options http://cssnano.co/
-const minimizeCssOptions = {
-  discardComments: { removeAll: true },
-};
-
 const defaultSplitChunksConfig = {
   chunks: 'all',
   name: 'commons',
@@ -437,8 +432,7 @@ module.exports = function createWebpackConfig({
         {
           test: reStyle,
           rules: [
-            // Process style assets with `css-hot-loader` if HMR
-            // is `true` or `auto`
+            // https://github.com/shepherdwind/css-hot-loader
             ...(project.hmr
               ? [{ loader: require.resolve('css-hot-loader') }]
               : []),
@@ -461,9 +455,10 @@ module.exports = function createWebpackConfig({
                   },
                 ]),
 
-            // Process internal/project styles (from src folder)
             {
               oneOf: [
+                // Files ending with `.global.(css|sass|scss|less)` will be transpiled with
+                // `modules: false`
                 {
                   test: /\.global\.[A-z]*$/,
                   loader: require.resolve('css-loader'),
@@ -473,8 +468,6 @@ module.exports = function createWebpackConfig({
                     sourceMap: separateCss,
                     // CSS Modules https://github.com/css-modules/css-modules
                     modules: false,
-                    // CSS Nano http://cssnano.co/
-                    minimize: isDebug ? false : minimizeCssOptions,
                   },
                 },
                 {
@@ -493,8 +486,6 @@ module.exports = function createWebpackConfig({
                     // PostCSS, sass-loader and resolve-url-loader, so composition
                     // will work with import
                     importLoaders: 3 + Number(project.tpaStyle),
-                    // CSS Nano http://cssnano.co/
-                    minimize: isDebug ? false : minimizeCssOptions,
                   },
                 },
               ],
