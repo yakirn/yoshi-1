@@ -31,7 +31,10 @@ const {
 } = require('react-dev-utils/WebpackDevServerUtils');
 // const clearConsole = require('react-dev-utils/clearConsole');
 const openBrowser = require('react-dev-utils/openBrowser');
-const createWebpackConfig = require('../../config/webpack.config');
+const {
+  createClientWebpackConfig,
+  createServerWebpackConfig,
+} = require('../../config/webpack.config');
 
 // const isInteractive = process.stdout.isTTY;
 
@@ -81,14 +84,16 @@ function serverLogPrefixer() {
 const appName = require(path.join(process.cwd(), 'package.json')).name;
 
 module.exports = async () => {
-  const webpackConfig = createWebpackConfig({
+  const clientConfig = createClientWebpackConfig({
     isDebug: true,
     isAnalyze: false,
   });
 
-  // Configure client-side hot module replacement
-  const clientConfig = webpackConfig.find(config => config.name === 'client');
+  const serverConfig = createServerWebpackConfig({
+    isDebug: true,
+  });
 
+  // Configure client-side hot module replacement
   clientConfig.entry.app = [
     // require('react-dev-utils/webpackHotDevClient'),
     require.resolve('./webpackHotDevClient'),
@@ -112,8 +117,6 @@ module.exports = async () => {
   clientConfig.plugins.push(new webpack.HotModuleReplacementPlugin());
 
   // Configure server-side hot module replacement
-  const serverConfig = webpackConfig.find(config => config.name === 'server');
-
   serverConfig.output.hotUpdateMainFilename = 'updates/[hash].hot-update.json';
 
   serverConfig.output.hotUpdateChunkFilename =
@@ -128,7 +131,7 @@ module.exports = async () => {
   // Configure compilation
   const multiCompiler = createCompiler(
     webpack,
-    webpackConfig,
+    [clientConfig, serverConfig],
     appName,
     prepareUrls('http', '0.0.0.0', 3000),
     false,
