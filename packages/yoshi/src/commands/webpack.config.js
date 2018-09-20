@@ -228,16 +228,13 @@ module.exports = function createWebpackConfig({
 
                 // https://babeljs.io/docs/usage/options/
                 babelrc: false,
+
                 presets: [
                   // A Babel preset that can automatically determine the Babel plugins and polyfills
                   // https://github.com/babel/babel-preset-env
                   [
                     require.resolve('babel-preset-yoshi'),
                     {
-                      targets: {
-                        browsers: pkg.browserslist,
-                      },
-                      forceAllTransforms: !isDebug, // for UglifyJS
                       modules: false,
                       useBuiltIns: false,
                       debug: false,
@@ -610,6 +607,32 @@ module.exports = function createWebpackConfig({
 
       rules: [
         ...overrideRules(config.module.rules, rule => {
+          // Override babel-preset-env configuration for Node.js
+          if (rule.loader === require.resolve('babel-loader')) {
+            return {
+              ...rule,
+              options: {
+                ...rule.options,
+                presets: rule.options.presets.map(
+                  preset =>
+                    preset[0] !== require.resolve('babel-preset-yoshi')
+                      ? preset
+                      : [
+                          require.resolve('babel-preset-yoshi'),
+                          {
+                            targets: {
+                              node: 'current',
+                            },
+                            modules: false,
+                            useBuiltIns: false,
+                            debug: false,
+                          },
+                        ],
+                ),
+              },
+            };
+          }
+
           // Override paths to static assets
           if (
             rule.loader === require.resolve('file-loader') ||
