@@ -47,8 +47,7 @@ module.exports = async ({
   if (webpackConfigPath) {
     const getConfig = require(webpackConfigPath);
     const webpackConfig = getConfig({
-      min: false,
-      hmr,
+      isDebug: true,
     });
 
     if (shouldRunWebpack(webpackConfig, defaultEntry, configuredEntry)) {
@@ -59,10 +58,10 @@ module.exports = async ({
         webpackConfig.module.rules.forEach(rule => {
           if (Array.isArray(rule.use)) {
             rule.use = rule.use.map(useItem => {
-              if (useItem === 'babel-loader') {
-                useItem = { loader: 'babel-loader' };
+              if (useItem === require.resolve('babel-loader')) {
+                useItem = { loader: require.resolve('babel-loader') };
               }
-              if (useItem.loader === 'babel-loader') {
+              if (useItem.loader === require.resolve('babel-loader')) {
                 if (!useItem.options) {
                   useItem.options = {};
                 }
