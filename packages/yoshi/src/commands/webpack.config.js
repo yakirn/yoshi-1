@@ -32,7 +32,7 @@ const artifactName = process.env.ARTIFACT_ID;
 const artifactVersion = process.env.ARTIFACT_VERSION;
 
 const reScript = /\.(js|jsx|mjs)$/;
-const reStyle = /\.(css|less|styl|scss|sass|sss)$/;
+const reStyle = /\.(css|less|scss|sass)$/;
 const reAssets = /\.(png|jpg|jpeg|gif|svg|woff|woff2|ttf|otf|eot|wav|mp3)$/;
 
 const disableTsThreadOptimization =
