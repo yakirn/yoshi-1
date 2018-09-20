@@ -1,49 +1,50 @@
-import { Router } from 'express';
+import wixExpressCsrf from 'wix-express-csrf';
+import wixExpressRequireHttps from 'wix-express-require-https';
+import hot from './server';
 
-let context
-let router;
-let wrappedFunction;
+// This function is the main entry for our server. It accepts an express Router
+// (see http://expressjs.com) and attaches routes and middlewares to it.
+//
+// `context` is an object with built-in services from `wix-bootstrap-ng`. See
+// https://github.com/wix-platform/wix-node-platform/tree/master/bootstrap/wix-bootstrap-ng).
+export default hot(module, (app, context) => {
+  // We load the already parsed ERB configuration (located at /templates folder).
+  const config = context.config.load('{%projectName%}');
 
-const makeHotExport = sourceModule => {
-  if (sourceModule.hot) {
-    const updateRouter = () => {
-      setTimeout(() => {
-        try {
-          router = wrappedFunction(Router(), context);
-        } catch (error) {
-        //   console.log(error);
-        }
-      });
+  // Attach CSRF protection middleware. See
+  // https://github.com/wix-platform/wix-node-platform/tree/master/express/wix-express-csrf.
+  app.use(wixExpressCsrf());
+
+  // Require HTTPS by redirecting to HTTPS from HTTP. Only active in a production environment.
+  // See https://github.com/wix-platform/wix-node-platform/tree/master/express/wix-express-require-https.
+  app.use(wixExpressRequireHttps);
+
+  // Attach a rendering middleware, it adds the `renderView` method to every request.
+  // See https://github.com/wix-private/fed-infra/tree/master/wix-bootstrap-renderer.
+  app.use(context.renderer.middleware());
+
+  // Define a route to render our initial HTML.
+  app.get('/', (req, res) => {
+    // return res.send('hello world 1234');
+
+    // Extract some data from every incoming request.
+    const renderModel = getRenderModel(req);
+
+    // Send a response back to the client.
+    res.renderView('./index.ejs', renderModel);
+  });
+
+  function getRenderModel(req) {
+    const { language, basename, debug } = req.aspects['web-context'];
+
+    return {
+      language,
+      basename,
+      debug: debug || process.env.NODE_ENV === 'development',
+      title: 'Wix Full Stack Project Boilerplate',
+      staticsDomain: config.clientTopology.staticsDomain,
     };
-
-    sourceModule.hot.accept(updateRouter);
-
-    if (sourceModule.hot.addStatusHandler) {
-      if (sourceModule.hot.status() === 'idle') {
-        sourceModule.hot.addStatusHandler(status => {
-          if (status === 'apply') {
-            updateRouter();
-          }
-        })
-      }
-    }
   }
-};
 
-export default (sourceModule, _wrappedFunction) => {
-  makeHotExport(sourceModule);
-
-  wrappedFunction = _wrappedFunction;
-
-  return (app, _context) => {
-    context = _context;
-
-    router = wrappedFunction(Router(), context);
-
-    app.use((req, res, next) => {
-      router.handle(req, res, next);
-    });
-
-    return app;
-  };
-};
+  return app;
+});

@@ -554,7 +554,7 @@ function createServerWebpackConfig({ isDebug = true } = {}) {
     target: 'node',
 
     entry: {
-      server: [require.resolve('./hot'), './real.js'],
+      server: [require.resolve('./hot'), './server.js'],
     },
 
     output: {
