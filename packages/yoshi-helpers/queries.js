@@ -76,3 +76,8 @@ module.exports.hasE2ETests = () => {
 module.exports.hasProtractorConfigFile = () => {
   return exists(path.resolve('protractor.conf.js'));
 };
+
+module.exports.hasBundleInStaticsDir = () => {
+  const statics = glob.sync(path.resolve(globs.statics, '*'));
+  return statics.some(fileName => fileName.endsWith('bundle.js'));
+};
