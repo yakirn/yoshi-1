@@ -12,8 +12,6 @@ const RtlCssPlugin = require('rtlcss-webpack-plugin');
 const DynamicPublicPath = require('../webpack-plugins/dynamic-public-path');
 const { localIdentName, staticsDomain } = require('../constants');
 
-const pkg = require(path.join(process.cwd(), './package.json'));
-
 const project = require('yoshi-config');
 const {
   unprocessedModules,
@@ -705,7 +703,7 @@ module.exports = function createWebpackConfig({
 
     externals: [
       nodeExternals({
-        whitelist: [reStyle, reAssets, 'webpack/hot/poll?1000'],
+        whitelist: [reStyle, reAssets],
       }),
     ],
 
