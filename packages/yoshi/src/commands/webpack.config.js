@@ -22,9 +22,11 @@ const {
 } = require('yoshi-helpers');
 
 const ROOT_DIR = process.cwd();
+
 const resolvePath = (...args) => path.resolve(ROOT_DIR, ...args);
+
 const SRC_DIR = resolvePath('src');
-const BUILD_DIR = resolvePath('build');
+const BUILD_DIR = resolvePath('dist/statics');
 
 const artifactName = process.env.ARTIFACT_ID;
 const artifactVersion = process.env.ARTIFACT_VERSION;
@@ -41,6 +43,8 @@ const disableModuleConcat = process.env.DISABLE_MODULE_CONCATENATION === 'true';
 const isProduction = checkIsProduction();
 
 const inTeamCity = checkInTeamCity();
+
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 const separateCss =
   project.separateCss === 'prod'
@@ -87,22 +91,18 @@ function overrideRules(rules, patch) {
   });
 }
 
-module.exports = function createWebpackConfig({
-  isAnalyze = false,
-  isDebug = true,
-}) {
-  //
-  // Common configuration chunk to be used for both
-  // client-side (client.js) and server-side (server.js) bundles
-  // -----------------------------------------------------------------------------
-
+//
+// Common configuration chunk to be used for both
+// client-side (client.js) and server-side (server.js) bundles
+// -----------------------------------------------------------------------------
+function createCommonWebpackConfig({ isDebug = true } = {}) {
   const config = {
     context: SRC_DIR,
 
     mode: isProduction ? 'production' : 'development',
 
     output: {
-      path: resolvePath(BUILD_DIR, 'public/assets'),
+      path: BUILD_DIR,
       publicPath,
       pathinfo: isDebug,
       filename: isDebug ? '[name].bundle.js' : '[name].bundle.min.js',
@@ -113,17 +113,10 @@ module.exports = function createWebpackConfig({
     },
 
     resolve: {
-      // Allow absolute paths in imports, e.g. import Button from 'components/Button'
-      // Keep in sync with .flowconfig and .eslintrc
       modules: ['node_modules', SRC_DIR],
 
-      // These are the reasonable defaults supported by the Node ecosystem.
-      // We also include JSX as a common component filename extension to support
-      // some tools, although we do not recommend using it, see:
-      // https://github.com/facebookincubator/create-react-app/issues/290
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
 
-      // The user can configure its own aliases
       alias: project.resolveAlias,
 
       // Whether to resolve symlinks to their symlinked location.
@@ -131,17 +124,19 @@ module.exports = function createWebpackConfig({
     },
 
     // Since Yoshi doesn't depend on every loader it uses directly, we first look
-    // for loaders in Yoshi's `node_modules` and then look at the root `node_modules`.
-    // See https://github.com/wix/yoshi/pull/392.
+    // for loaders in Yoshi's `node_modules` and then look at the root `node_modules`
+    //
+    // See https://github.com/wix/yoshi/pull/392
     resolveLoader: {
       modules: [path.join(__dirname, '../node_modules'), 'node_modules'],
     },
 
     plugins: [
-      // Watcher doesn't work well if you mistype casing in a path so we use
-      // a plugin that prints an error when you attempt to do this.
-      // See https://github.com/facebookincubator/create-react-app/issues/240
+      // https://github.com/Urthen/case-sensitive-paths-webpack-plugin
       new CaseSensitivePathsPlugin(),
+      // Hacky way of communicating to our `babel-preset-yoshi` or `babel-preset-wix`
+      // that it should optimize for Webpack
+      { apply: () => (process.env.IN_WEBPACK = 'true') },
     ],
 
     module: {
@@ -149,7 +144,7 @@ module.exports = function createWebpackConfig({
       strictExportPresence: true,
 
       rules: [
-        // Rules for optimizing Lodash
+        // https://github.com/wix/externalize-relative-module-loader
         ...(project.features.externalizeRelativeLodash
           ? [
               {
@@ -159,11 +154,11 @@ module.exports = function createWebpackConfig({
             ]
           : []),
 
-        // Rules specific for Angular
+        // https://github.com/huston007/ng-annotate-loader
         ...(project.isAngularProject
           ? [
               {
-                test: [reScript, /\.(ts|tsx)$/],
+                test: reScript,
                 loader: require.resolve('ng-annotate-loader'),
                 include: unprocessedModules,
               },
@@ -178,8 +173,6 @@ module.exports = function createWebpackConfig({
             ...(disableTsThreadOptimization
               ? []
               : [
-                  // This loader parallelizes code compilation, it is optional but
-                  // improves compile time on larger projects
                   {
                     loader: require.resolve('thread-loader'),
                     options: {
@@ -197,10 +190,15 @@ module.exports = function createWebpackConfig({
                   module: 'esnext',
                   // use same module resolution
                   moduleResolution: 'node',
-                  // allow using Promises, Array.prototype.includes, String.prototype.padStart, etc.
-                  lib: ['es2017'],
-                  // use async/await instead of embedding polyfills
-                  target: 'es2017',
+                  // optimize target to latest chrome for local development
+                  ...(isDevelopment
+                    ? {
+                        // allow using Promises, Array.prototype.includes, String.prototype.padStart, etc.
+                        lib: ['es2017'],
+                        // use async/await instead of embedding polyfills
+                        target: 'es2017',
+                      }
+                    : {}),
                 },
               },
             },
@@ -220,26 +218,6 @@ module.exports = function createWebpackConfig({
             },
             {
               loader: require.resolve('babel-loader'),
-              options: {
-                // https://github.com/babel/babel-loader#options
-                cacheDirectory: isDebug,
-
-                // https://babeljs.io/docs/usage/options/
-                babelrc: false,
-
-                presets: [
-                  // A Babel preset that can automatically determine the Babel plugins and polyfills
-                  // https://github.com/babel/babel-preset-env
-                  [
-                    require.resolve('babel-preset-yoshi'),
-                    {
-                      modules: false,
-                      useBuiltIns: false,
-                      debug: false,
-                    },
-                  ],
-                ],
-              },
             },
           ],
         },
@@ -295,18 +273,21 @@ module.exports = function createWebpackConfig({
     // Don't attempt to continue if there are any errors.
     bail: !isDebug,
 
-    // Specify what bundle information gets displayed
     // https://webpack.js.org/configuration/stats/
     stats: 'none',
 
-    // Choose a developer tool to enhance debugging
-    // https://webpack.js.org/configuration/devtool/#devtool
-    devtool: isDebug ? 'cheap-module-inline-source-map' : 'source-map',
+    // https://webpack.js.org/configuration/devtool
+    devtool: inTeamCity ? 'source-map' : 'cheap-module-source-map',
   };
 
-  //
-  // Configuration for the client-side bundle (client.js)
-  // -----------------------------------------------------------------------------
+  return config;
+}
+
+//
+// Configuration for the client-side bundle (client.js)
+// -----------------------------------------------------------------------------
+function createClientWebpackConfig({ isAnalyze = false, isDebug = true } = {}) {
+  const config = createCommonWebpackConfig({ isDebug });
 
   const clientConfig = {
     ...config,
@@ -343,8 +324,7 @@ module.exports = function createWebpackConfig({
     output: {
       ...config.output,
 
-      // This is changed to support running multiple webpack runtimes
-      // (from different compilation) on the same webpage.
+      // https://github.com/wix/yoshi/pull/497
       jsonpFunction: `webpackJsonp_${toIdentifier(project.name)}`,
 
       // Bundle as UMD format if the user configured that this is a library
@@ -384,7 +364,6 @@ module.exports = function createWebpackConfig({
       // Hacky way of correcting Webpack's publicPath
       new DynamicPublicPath(),
 
-      // Define free variables
       // https://webpack.js.org/plugins/define-plugin/
       new webpack.DefinePlugin({
         'process.env.BROWSER': true,
@@ -397,11 +376,7 @@ module.exports = function createWebpackConfig({
         ),
       }),
 
-      // Moment.js is an extremely popular library that bundles large locale files
-      // by default due to how Webpack interprets its code. This is a practical
-      // solution that requires the user to opt into importing specific locales.
       // https://github.com/jmblog/how-to-optimize-momentjs-with-webpack
-      // You can remove this if you don't use Moment.js:
       new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
 
       // https://github.com/wix/stylable
@@ -412,9 +387,16 @@ module.exports = function createWebpackConfig({
         optimize: { classNameOptimizations: false, shortNamespaces: false },
       }),
 
-      // Webpack Bundle Analyzer
       // https://github.com/th0r/webpack-bundle-analyzer
-      ...(isAnalyze ? [new BundleAnalyzerPlugin()] : []),
+      ...(isAnalyze
+        ? [
+            new BundleAnalyzerPlugin({
+              generateStatsFile: true,
+              // Path is relative to the output dir
+              statsFilename: '../../target/webpack-stats.min.json',
+            }),
+          ]
+        : []),
     ],
 
     module: {
@@ -426,6 +408,7 @@ module.exports = function createWebpackConfig({
         // Rules for Style Sheets
         {
           test: reStyle,
+          exclude: /\.st\.css$/,
           rules: [
             // https://github.com/shepherdwind/css-hot-loader
             ...(project.hmr
@@ -458,15 +441,15 @@ module.exports = function createWebpackConfig({
                   test: /\.global\.[A-z]*$/,
                   loader: require.resolve('css-loader'),
                   options: {
-                    // CSS Loader https://github.com/webpack/css-loader
+                    // https://github.com/webpack/css-loader
                     importLoaders: 1,
                     sourceMap: separateCss,
-                    // CSS Modules https://github.com/css-modules/css-modules
+                    // https://github.com/css-modules/css-modules
                     modules: false,
                   },
                 },
                 {
-                  // CSS Loader https://github.com/webpack/css-loader
+                  // https://github.com/webpack/css-loader
                   loader: require.resolve('css-loader'),
                   options: {
                     camelCase: true,
@@ -476,7 +459,7 @@ module.exports = function createWebpackConfig({
                       : localIdentName.short,
                     // Make sure every package has unique class names
                     hashPrefix: project.name,
-                    // CSS Modules https://github.com/css-modules/css-modules
+                    // https://github.com/css-modules/css-modules
                     modules: project.cssModules,
                     // PostCSS, sass-loader and resolve-url-loader, so composition
                     // will work with import
@@ -486,11 +469,9 @@ module.exports = function createWebpackConfig({
               ],
             },
 
-            // Apply PostCSS plugins including autoprefixer
             {
               loader: require.resolve('postcss-loader'),
               options: {
-                // Necessary for external CSS imports to work
                 // https://github.com/facebookincubator/create-react-app/issues/2677
                 ident: 'postcss',
                 plugins: [require('autoprefixer')],
@@ -509,9 +490,7 @@ module.exports = function createWebpackConfig({
               ? [{ loader: require.resolve('wix-tpa-style-loader') }]
               : []),
 
-            // Compile Less to CSS
             // https://github.com/webpack-contrib/less-loader
-            // Install dependencies before uncommenting: yarn add --dev less-loader less
             {
               test: /\.less$/,
               loader: require.resolve('less-loader'),
@@ -521,9 +500,7 @@ module.exports = function createWebpackConfig({
               },
             },
 
-            // Compile Sass to CSS
             // https://github.com/webpack-contrib/sass-loader
-            // Install dependencies before uncommenting: yarn add --dev sass-loader node-sass
             {
               test: /\.(scss|sass)$/,
               loader: require.resolve('sass-loader'),
@@ -540,9 +517,6 @@ module.exports = function createWebpackConfig({
       ],
     },
 
-    // Some libraries import Node modules but don't use them in the browser.
-    // Tell Webpack to provide empty mocks for them so importing them works.
-    // https://webpack.js.org/configuration/node/
     // https://github.com/webpack/node-libs-browser/tree/master/mock
     node: {
       fs: 'empty',
@@ -551,10 +525,9 @@ module.exports = function createWebpackConfig({
       __dirname: true,
     },
 
-    // The user can configure its own externals
     externals: project.externals,
 
-    // https://webpack.js.org/configuration/performance/#performance
+    // https://webpack.js.org/configuration/performance
     performance: {
       ...(isProduction
         ? project.performanceBudget || { hints: false }
@@ -564,9 +537,14 @@ module.exports = function createWebpackConfig({
     },
   };
 
-  //
-  // Configuration for the server-side bundle (server.js)
-  // -----------------------------------------------------------------------------
+  return clientConfig;
+}
+
+//
+// Configuration for the server-side bundle (server.js)
+// -----------------------------------------------------------------------------
+function createServerWebpackConfig({ isDebug = true } = {}) {
+  const config = createCommonWebpackConfig({ isDebug });
 
   const serverConfig = {
     ...config,
@@ -576,11 +554,7 @@ module.exports = function createWebpackConfig({
     target: 'node',
 
     entry: {
-      server: [
-        // require.resolve('@babel/polyfill'),
-        require.resolve('./hot'),
-        './real.js',
-      ],
+      server: [require.resolve('./hot'), './real.js'],
     },
 
     output: {
@@ -589,7 +563,6 @@ module.exports = function createWebpackConfig({
       filename: '[name].js',
       chunkFilename: 'chunks/[name].js',
       libraryTarget: 'umd',
-      // library: pkg.name,
       libraryExport: 'default',
       globalObject: "(typeof self !== 'undefined' ? self : this)",
     },
@@ -605,32 +578,6 @@ module.exports = function createWebpackConfig({
 
       rules: [
         ...overrideRules(config.module.rules, rule => {
-          // Override babel-preset-env configuration for Node.js
-          if (rule.loader === require.resolve('babel-loader')) {
-            return {
-              ...rule,
-              options: {
-                ...rule.options,
-                presets: rule.options.presets.map(
-                  preset =>
-                    preset[0] !== require.resolve('babel-preset-yoshi')
-                      ? preset
-                      : [
-                          require.resolve('babel-preset-yoshi'),
-                          {
-                            targets: {
-                              node: 'current',
-                            },
-                            modules: false,
-                            useBuiltIns: false,
-                            debug: false,
-                          },
-                        ],
-                ),
-              },
-            };
-          }
-
           // Override paths to static assets
           if (
             rule.loader === require.resolve('file-loader') ||
@@ -651,8 +598,8 @@ module.exports = function createWebpackConfig({
         // Rules for Style Sheets
         {
           test: reStyle,
+          exclude: /\.st\.css$/,
           rules: [
-            // Process internal/project styles (from src folder)
             {
               loader: require.resolve('css-loader/locals'),
               options: {
@@ -662,7 +609,7 @@ module.exports = function createWebpackConfig({
                   : localIdentName.short,
                 // Make sure every package has unique class names
                 hashPrefix: project.name,
-                // CSS Modules https://github.com/css-modules/css-modules
+                // https://github.com/css-modules/css-modules
                 modules: project.cssModules,
               },
             },
@@ -672,9 +619,7 @@ module.exports = function createWebpackConfig({
               ? [{ loader: require.resolve('wix-tpa-style-loader') }]
               : []),
 
-            // Compile Less to CSS
             // https://github.com/webpack-contrib/less-loader
-            // Install dependencies before uncommenting: yarn add --dev less-loader less
             {
               test: /\.less$/,
               loader: require.resolve('less-loader'),
@@ -683,9 +628,7 @@ module.exports = function createWebpackConfig({
               },
             },
 
-            // Compile Sass to CSS
             // https://github.com/webpack-contrib/sass-loader
-            // Install dependencies before uncommenting: yarn add --dev sass-loader node-sass
             {
               test: /\.(scss|sass)$/,
               loader: require.resolve('sass-loader'),
@@ -710,14 +653,12 @@ module.exports = function createWebpackConfig({
     plugins: [
       ...config.plugins,
 
-      // Define free variables
       // https://webpack.js.org/plugins/define-plugin/
       new webpack.DefinePlugin({
         'process.env.BROWSER': false,
         __DEV__: isDebug,
       }),
 
-      // Adds a banner to the top of each generated chunk
       // https://webpack.js.org/plugins/banner-plugin/
       new webpack.BannerPlugin({
         banner: 'require("source-map-support").install();',
@@ -744,5 +685,11 @@ module.exports = function createWebpackConfig({
     },
   };
 
-  return [clientConfig, serverConfig];
+  return serverConfig;
+}
+
+module.exports = {
+  createCommonWebpackConfig,
+  createClientWebpackConfig,
+  createServerWebpackConfig,
 };

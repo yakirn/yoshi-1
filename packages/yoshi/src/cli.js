@@ -10,25 +10,19 @@ module.exports = async command => {
   const action = require(`./commands/${command}`);
 
   try {
-    await action();
+    const { persistent = false } = await action({
+      context: presetPath,
+      workerOptions: { cwd: appDirectory },
+    });
+
+    if (!persistent) {
+      process.exit(0);
+    }
   } catch (error) {
-    console.error(error);
+    if (error.name !== 'WorkerError') {
+      console.error(error);
+    }
+
     process.exit(1);
   }
-  // try {
-  //   const { persistent = false } = await action({
-  //     context: presetPath,
-  //     workerOptions: { cwd: appDirectory },
-  //   });
-
-  //   if (!persistent) {
-  //     process.exit(0);
-  //   }
-  // } catch (error) {
-  //   if (error.name !== 'WorkerError') {
-  //     console.error(error);
-  //   }
-
-  //   process.exit(1);
-  // }
 };
