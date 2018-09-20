@@ -31,7 +31,7 @@ const {
 } = require('react-dev-utils/WebpackDevServerUtils');
 // const clearConsole = require('react-dev-utils/clearConsole');
 const openBrowser = require('react-dev-utils/openBrowser');
-const createWebpackConfig = require('./webpack.config');
+const createWebpackConfig = require('../../config/webpack.config');
 
 // const isInteractive = process.stdout.isTTY;
 

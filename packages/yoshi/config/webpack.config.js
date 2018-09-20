@@ -9,8 +9,8 @@ const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 const StylableWebpackPlugin = require('stylable-webpack-plugin');
 const TpaStyleWebpackPlugin = require('tpa-style-webpack-plugin');
 const RtlCssPlugin = require('rtlcss-webpack-plugin');
-const DynamicPublicPath = require('../webpack-plugins/dynamic-public-path');
-const { localIdentName, staticsDomain } = require('../constants');
+const DynamicPublicPath = require('../src/webpack-plugins/dynamic-public-path');
+const { localIdentName, staticsDomain } = require('../src/constants');
 
 const project = require('yoshi-config');
 const {

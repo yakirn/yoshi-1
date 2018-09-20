@@ -2,7 +2,7 @@ const union = require('lodash/union');
 const StylableWebpackPlugin = require('stylable-webpack-plugin');
 const project = require('yoshi-config');
 const { localIdentName } = require('../src/constants');
-const { createCommonWebpackConfig } = require('../src/commands/webpack.config');
+const { createCommonWebpackConfig } = require('./webpack.config');
 
 module.exports = config => {
   const webpackCommonConfig = createCommonWebpackConfig({ isDebug: true });

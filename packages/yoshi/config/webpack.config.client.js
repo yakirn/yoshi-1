@@ -1,3 +1,3 @@
-const { createClientWebpackConfig } = require('../src/commands/webpack.config');
+const { createClientWebpackConfig } = require('./webpack.config');
 
 module.exports = createClientWebpackConfig;
