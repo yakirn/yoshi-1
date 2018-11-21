@@ -13,6 +13,7 @@
     "test": "DISABLE_SENTRY=1 mocha './+(test|src)/{,!(fixtures)/**/}/*.spec.js' --retries=$([ -z \"$TEAMCITY_VERSION\" ] && echo 0 || echo 1)"
   },
   "dependencies": {
+    "@babel/code-frame": "^7.0.0",
     "@babel/plugin-transform-modules-commonjs": "^7.1.0",
     "@babel/register": "^7.0.0",
     "@sentry/node": "^4.0.6",
