@@ -52,17 +52,12 @@
       "app": "./src/components/App",
       "viewer": "./src/platform/viewerScript",
       "editor": "./src/platform/editorScript"
-    }
+    },
+    "exports": "{%projectName%}",
+    "umdNamedDefine": false
   },
   "jest": {
     "preset": "jest-yoshi-preset"
-  },
-  "babel": {
-    "presets": [
-      "yoshi"
-    ],
-    "exports": "{%projectName%}",
-    "umdNamedDefine": false
   },
   "eslintConfig": {
     "extends": "yoshi"

@@ -35,11 +35,6 @@
     "hmr": "auto"
   },
   "module": "dist/es/src/index.js",
-  "babel": {
-    "presets": [
-      "yoshi"
-    ]
-  },
   "eslintConfig": {
     "extends": "yoshi"
   }
